@@ -7,7 +7,8 @@ out/
 *.iws
 .idea/
 target/
-
+# Ignore compiled Java classes
+*.class
 
 ### Eclipse ###
 .apt_generated
