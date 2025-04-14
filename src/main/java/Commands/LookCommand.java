@@ -11,10 +11,10 @@ public class LookCommand extends BaseCommand {
 
     @Override
     protected void executeCommand(String[] args, GameContext context) {
-        Room current = context.getBuilding().getCurrentRoom();
+        Room current = context.getCurrentRoom(); // Directly use getCurrentRoom from GameContext
         System.out.println(current.getDescription());
         System.out.println(current.getObjectsDescription());
-        System.out.println(context.getBuilding().getOccupantsDescription()); // Room description
+        System.out.println(context.getOccupantsDescription()); // Get occupants description
 
         // Format exits
         Map<String, Room> neighbors = current.getNeighbors();

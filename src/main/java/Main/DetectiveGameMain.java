@@ -1,5 +1,6 @@
 package Main;
 
+import Commands.AddCaseCommand;
 import Commands.Command;
 import Commands.CommandFactory;
 import Commands.CommandParser;
@@ -32,10 +33,7 @@ public class DetectiveGameMain {
                 List<CaseFile> cases = CaseLoader.loadCases(casesDir);
                 displayCaseMenu(cases);
 
-
-                GameContext context = new GameContext(null, null, null, null, null, null);
-
-                CaseFile selectedCase = selectCase(scanner, cases, casesDir, context);
+                CaseFile selectedCase = selectCase(scanner, cases, casesDir);
 
                 // Check if the user wants to exit the application
                 if (selectedCase == null) {
@@ -79,9 +77,8 @@ public class DetectiveGameMain {
     /**
      * Handles case selection logic, including adding new cases or quitting the game.
      */
-    private static CaseFile selectCase(Scanner scanner, List<CaseFile> cases, String casesDir, GameContext context) {
+    private static CaseFile selectCase(Scanner scanner, List<CaseFile> cases, String casesDir) {
         while (true) {
-            context.setInCaseSelectionMenu(true); // Indicate that we are in the case selection menu
             System.out.print("Enter case number (0 to add case, 'quit' to exit game): ");
             String input = scanner.nextLine().trim();
 
@@ -93,7 +90,7 @@ public class DetectiveGameMain {
 
                 if (input.equalsIgnoreCase("add case") || input.startsWith("add case ")) {
                     // Handle adding a new case
-                    handleAddCase(scanner, input, casesDir, context);
+                    handleAddCase(scanner, input);
                     cases = CaseLoader.loadCases(casesDir); // Reload cases after adding a new one
                     displayCaseMenu(cases); // Redisplay the updated case menu
                     continue; // Stay in the loop to allow selecting a case
@@ -102,12 +99,11 @@ public class DetectiveGameMain {
                 int choice = Integer.parseInt(input);
                 if (choice == 0) {
                     // Handle adding a new case when '0' is entered
-                    handleAddCase(scanner, "add case", casesDir, context);
+                    handleAddCase(scanner, "add case");
                     cases = CaseLoader.loadCases(casesDir); // Reload cases after adding a new one
                     displayCaseMenu(cases); // Redisplay the updated case menu
                     continue; // Stay in the loop to allow selecting a case
                 } else if (choice > 0 && choice <= cases.size()) {
-                    context.setInCaseSelectionMenu(false); // Reset the flag before returning
                     return cases.get(choice - 1); // Return the selected case
                 } else {
                     System.out.println("Invalid choice. Please select a valid case number.");
@@ -119,19 +115,13 @@ public class DetectiveGameMain {
     }
 
     /**
-     * Handles the addition of a new case file.
+     * Handles the addition of a new case file using the AddCaseCommand utility.
      */
-    private static void handleAddCase(Scanner scanner, String input, String casesDir, GameContext context) {
-        Command addCaseCommand = CommandFactory.getCommand("add");
-        if (addCaseCommand == null) {
-            System.out.println("Error: Add case command not found.");
-            return;
-        }
-
+    private static void handleAddCase(Scanner scanner, String input) {
         if (input.equalsIgnoreCase("add case")) {
             System.out.print("Enter the file path: ");
             String filePath = scanner.nextLine().trim();
-            addCaseCommand.execute(new String[]{"add", "case", filePath}, context); // Pass the context
+            AddCaseCommand.addCaseFromFile(filePath); // Call with one argument
         } else if (input.startsWith("add case ")) {
             // Validate input length before extracting the file path
             if (input.length() <= "add case ".length()) {
@@ -139,7 +129,7 @@ public class DetectiveGameMain {
                 return;
             }
             String filePath = input.substring("add case ".length()).trim();
-            addCaseCommand.execute(new String[]{"add", "case", filePath}, context); // Pass the context
+            AddCaseCommand.addCaseFromFile(filePath); // Call with one argument
         } else {
             System.out.println("Invalid input. Please type 'add case' or 'add case [file_path]'.");
         }
@@ -149,29 +139,33 @@ public class DetectiveGameMain {
      * Starts the game for the selected case.
      */
     private static boolean startGame(Scanner scanner, CaseFile caseFile, String casesDir) {
-        // Load the building structure for the case
-        Building building = BuildingExtractor.loadBuilding(caseFile);
-        if (building == null) {
-            return false;
-        }
+        // Initialize GameContext for the case
+        GameContext context = new GameContext(
+                new Detective("Sherlock Holmes"),
+                new DoctorWatson(caseFile.getWatsonHints()),
+                new Journal(),
+                new TaskList(caseFile.getTasks()),
+                caseFile
+        );
+
+        // Load the building structure (rooms and neighbors) into the GameContext
+        BuildingExtractor.loadBuilding(caseFile, context);
 
         try {
-            SuspectExtractor.loadSuspects(caseFile, building);
+            // Load suspects into the GameContext
+            SuspectExtractor.loadSuspects(caseFile, context);
         } catch (IllegalStateException e) {
             System.out.println(e.getMessage());
             return false;
         }
-        GameObjectExtractor.loadObjects(caseFile, building); // Load game objects into the building
 
-        // Initialize game components
-        TaskList taskList = new TaskList(caseFile.getTasks());
-        Detective detective = new Detective("Sherlock Holmes");
-        DoctorWatson watson = new DoctorWatson(caseFile.getWatsonHints());
-        GameContext context = new GameContext(building, detective, watson, new Journal(), taskList, caseFile);
+        // Load game objects into the GameContext
+        GameObjectExtractor.loadObjects(caseFile, context);
 
-        // Set Watson's starting room and register him with the building
-        watson.setCurrentRoom(building.getCurrentRoom());
-        building.setWatson(watson);
+        // Set Watson's starting room and register him with the GameContext
+        DoctorWatson watson = context.getWatson();
+        watson.setCurrentRoom(context.getCurrentRoom());
+        context.setWatson(watson);
 
         // Display the case invitation letter
         Letter letter = new Letter();
@@ -179,17 +173,14 @@ public class DetectiveGameMain {
         letter.displayInvitation();
         System.out.println("\nNow type 'start case' to begin the investigation.");
 
-
+        // Main command loop
         while (!context.isExitCurrentGame()) {
             System.out.print("<CaseFile>");
             String input = scanner.nextLine().trim();
             if (input.isEmpty()) continue;
 
-            String commandName = CommandParser.parseCommand(input);
-
-            Command command = CommandFactory.getCommand(commandName);
+            Command command = CommandFactory.getCommand(CommandParser.parseCommand(input));
             if (command != null) {
-
                 command.execute(input.split(" "), context);
             } else {
                 System.out.println("Unknown command. Type 'help' for a list of commands.");

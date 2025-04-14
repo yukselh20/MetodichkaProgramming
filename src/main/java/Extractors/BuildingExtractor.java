@@ -1,6 +1,6 @@
 package Extractors;
 
-import Core.Building;
+import Core.GameContext;
 import Core.Room;
 import JsonDTO.CaseFile;
 import java.util.*;
@@ -19,12 +19,17 @@ public class BuildingExtractor {
         VALID_DIRECTIONS.add("down");
     }
 
-    public static Building loadBuilding(CaseFile caseFile) {
-        Building building = new Building() {}; // Anonymous class for generic building
+    /**
+     * Loads the building structure from the case file and populates the GameContext.
+     *
+     * @param caseFile The case file containing room and neighbor data.
+     * @param context  The GameContext to populate with the building structure.
+     * @return True if the building was successfully loaded, false otherwise.
+     */
+    public static boolean loadBuilding(CaseFile caseFile, GameContext context) {
         Map<String, Room> roomMap = new HashMap<>();
-        boolean hasErrors = false; // Flag to track if there are any errors
-
         Set<String> roomNames = new HashSet<>();
+        boolean hasErrors = false; // Flag to track if there are any errors
 
         // Create rooms using concrete subclasses based on JSON data
         for (CaseFile.RoomData roomData : caseFile.getRooms()) {
@@ -39,7 +44,7 @@ public class BuildingExtractor {
 
             Room room = createRoomFromData(roomData);
             roomMap.put(roomName, room);
-            building.addRoom(room);
+            context.addRoom(room); // Add room directly to GameContext
         }
 
         // Link neighbors with validation
@@ -77,25 +82,27 @@ public class BuildingExtractor {
             }
         }
 
-        // If there were errors, return null to indicate failure
-        if (hasErrors) {
-            System.out.println(
-                    "Errors encountered while loading the case. Exiting to case selection menu.");
-            return null;
-        }
-
-        // Set starting room
+        // Validate starting room
         Room startingRoom = roomMap.get(caseFile.getStartingRoom());
         if (startingRoom == null) {
             System.out.println(
                     "Starting room '"
                             + caseFile.getStartingRoom()
                             + "' not found. Exiting to case selection menu.");
-            return null;
+            return false;
         }
-        building.setCurrentRoom(startingRoom);
+        context.setCurrentRoom(startingRoom);
 
-        return building;
+        // Validate room connectivity
+        try {
+            validateRoomConnectivity(context, startingRoom);
+        } catch (IllegalStateException e) {
+            System.out.println(e.getMessage());
+            return false;
+        }
+
+        // If there were errors, return false to indicate failure
+        return !hasErrors;
     }
 
     private static Room createRoomFromData(CaseFile.RoomData roomData) {
@@ -110,10 +117,11 @@ public class BuildingExtractor {
     /**
      * Validates that all rooms in the building are reachable from the starting room.
      *
-     * @param building The building containing all rooms.
-     * @param startRoom The starting room for traversal.
+     * @param context    The GameContext containing all rooms.
+     * @param startRoom  The starting room for traversal.
+     * @throws IllegalStateException If any room is unreachable.
      */
-    private static void validateRoomConnectivity(Building building, Room startRoom) {
+    private static void validateRoomConnectivity(GameContext context, Room startRoom) {
         Set<Room> visited = new HashSet<>();
         Queue<Room> queue = new LinkedList<>();
 
@@ -132,7 +140,7 @@ public class BuildingExtractor {
         }
 
         // Check if all rooms were visited
-        for (Room room : building.getRooms().values()) {
+        for (Room room : context.getRooms().values()) {
             if (!visited.contains(room)) {
                 throw new IllegalStateException(
                         "Room '" + room.getName() + "' is unreachable from the starting room.");

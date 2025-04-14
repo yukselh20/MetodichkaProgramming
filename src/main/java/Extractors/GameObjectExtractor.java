@@ -1,12 +1,12 @@
 package Extractors;
 
-import Core.Building;
+import Core.GameContext;
 import Core.GameObject;
 import Core.Room;
 import JsonDTO.CaseFile;
 
 public class GameObjectExtractor {
-    public static void loadObjects(CaseFile caseFile, Building building) {
+    public static void loadObjects(CaseFile caseFile, GameContext building) {
         for (CaseFile.RoomData roomData : caseFile.getRooms()) {
             Room room = building.getRoomByName(roomData.getName());
             if (room != null && roomData.getObjects() != null) {

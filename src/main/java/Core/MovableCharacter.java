@@ -17,7 +17,12 @@ public abstract class MovableCharacter {
         this.currentRoom = room;
     }
 
-    public void randomMove() {
+    /**
+     * Moves the character to a random neighboring room.
+     *
+     * @param context The GameContext object providing access to game data.
+     */
+    public void randomMove(GameContext context) {
         Map<String, Room> neighbors = currentRoom.getNeighbors();
         List<Room> allowedRooms = new ArrayList<>(neighbors.values());
         if (!allowedRooms.isEmpty()) {

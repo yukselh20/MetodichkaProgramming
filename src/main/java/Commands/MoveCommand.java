@@ -1,6 +1,5 @@
 package Commands;
 
-import Core.Building;
 import Core.GameContext;
 import Core.GameObject;
 import Core.Room;
@@ -10,9 +9,9 @@ public class MoveCommand extends BaseCommand {
     public MoveCommand() {
         super(true); // Requires the case to be started
     }
+
     @Override
     public void executeCommand(String[] args, GameContext context) {
-
         // Validate input
         if (args.length < 2) {
             System.out.println("Usage: move [north|south|east|west|up|down]");
@@ -23,22 +22,24 @@ public class MoveCommand extends BaseCommand {
         String direction = args[1].toLowerCase();
 
         // Attempt to move the player
-        Building building = context.getBuilding();
-        Room newRoom = building.move(direction);
+        Room newRoom = context.getCurrentRoom().getNeighbor(direction);
 
         if (newRoom == null) {
             System.out.println("You can't move in that direction.");
             return;
         }
 
+        // Update the current room in the context
+        context.setCurrentRoom(newRoom);
+
         // Update suspect and Watson movements
-        building.updateMovements(context.getWatson());
+        context.updateMovements();
 
         // Display updated room information
-        displayRoomInformation(newRoom, building);
+        displayRoomInformation(newRoom, context);
     }
 
-    private void displayRoomInformation(Room room, Building building) {
+    private void displayRoomInformation(Room room, GameContext context) {
         // Print room description
         System.out.println("\n" + room.getDescription());
 
@@ -60,9 +61,10 @@ public class MoveCommand extends BaseCommand {
         System.out.println(room.getExitsDescription());
 
         // Print occupants in the room
-        System.out.println(building.getOccupantsDescription());
+        System.out.println(context.getOccupantsDescription());
     }
 
+    @Override
     public String getDescription() {
         return "Move north, south, east, west, up, or down.";
     }

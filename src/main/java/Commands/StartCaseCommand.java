@@ -1,10 +1,11 @@
 package Commands;
 
-import JsonDTO.CaseFile;
 import Core.GameContext;
 import Core.Letter;
 import Core.Room;
 import Extractors.LetterExtractor;
+import JsonDTO.CaseFile;
+
 import java.util.List;
 
 public class StartCaseCommand extends BaseCommand {
@@ -14,6 +15,7 @@ public class StartCaseCommand extends BaseCommand {
 
     @Override
     protected void executeCommand(String[] args, GameContext context) {
+        // Retrieve the selected case
         CaseFile caseFile = context.getSelectedCase();
         if (caseFile == null) {
             System.out.println("No case selected. Please choose a case first.");
@@ -28,7 +30,7 @@ public class StartCaseCommand extends BaseCommand {
 
         // Display tasks using TaskList data instead of direct I/O
         System.out.println("\n--- Case Tasks ---");
-        List<String> tasks = context.getTaskList().getTasks();
+        List<String> tasks = context.getTaskList().getTasks(); // Use TaskList from GameContext
         if (tasks.isEmpty()) {
             System.out.println("No tasks available for this case.");
         } else {
@@ -38,11 +40,14 @@ public class StartCaseCommand extends BaseCommand {
         }
 
         // Display starting room details
-        Room currentRoom = context.getBuilding().getCurrentRoom();
+        Room currentRoom = context.getCurrentRoom(); // Directly use getCurrentRoom from GameContext
         System.out.println("\nYou are now at the starting location: " + currentRoom.getName());
         System.out.println(currentRoom.getDescription());
         displayExits(currentRoom);
-        System.out.println(context.getBuilding().getOccupantsDescription());
+
+        // Display occupants in the current room
+        System.out.println(context.getOccupantsDescription()); // Use getOccupantsDescription from GameContext
+
         System.out.println("\nType 'help' to see commands.");
 
         // Set the flag to indicate the case has started

@@ -14,7 +14,7 @@ public class AskWatsonCommand extends BaseCommand {
                 .getWatson()
                 .getCurrentRoom()
                 .getName()
-                .equals(context.getBuilding().getCurrentRoom().getName())) {
+                .equals(context.getCurrentRoom().getName())) {
             context.getWatson().provideHint();
         } else {
             System.out.println("Dr. Watson is not in this room.");

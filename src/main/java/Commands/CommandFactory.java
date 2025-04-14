@@ -19,7 +19,6 @@ public class CommandFactory {
         commandMap.put("final exam", new FinalExamCommand());
         commandMap.put("ask watson", new AskWatsonCommand());
         commandMap.put("help", new HelpCommand());
-        commandMap.put("add", new AddCaseCommand());
         commandMap.put("tasks", new TaskCommand());
         commandMap.put("exit", new ExitCommand());
     }
