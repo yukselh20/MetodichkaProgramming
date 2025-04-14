@@ -9,6 +9,8 @@ out/
 target/
 # Ignore compiled Java classes
 *.class
+lib/
+cases/
 
 ### Eclipse ###
 .apt_generated
