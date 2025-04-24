@@ -10,7 +10,6 @@ public class GameContext {
   private Map<String, Room> rooms = new HashMap<>(); // Runtime room instances
   private List<Suspect> suspects = new ArrayList<>(); // Live suspect positions
   private DoctorWatson watson;
-  private Room currentRoom; // Player's current location
   private List<CaseFile> cases = new ArrayList<>();
   private Detective detective;
   private Journal journal;
@@ -41,9 +40,9 @@ public class GameContext {
    */
   public Room move(String direction) {
     direction = direction.toLowerCase();
-    Room nextRoom = currentRoom.getNeighbor(direction);
+    Room nextRoom = detective.getCurrentRoom().getNeighbor(direction);
     if (nextRoom != null) {
-      currentRoom = nextRoom;
+      detective.setCurrentRoom(nextRoom);
       return nextRoom;
     }
     return null;
@@ -84,7 +83,7 @@ public class GameContext {
    */
   public void setWatson(DoctorWatson watson) {
     this.watson = watson;
-    this.watson.setCurrentRoom(this.currentRoom); // Sync with the current room
+    this.watson.setCurrentRoom(detective.getCurrentRoom()); // Sync with the detective's current room
   }
 
   /**
@@ -98,13 +97,13 @@ public class GameContext {
 
     // Check suspects in the current room
     for (Suspect suspect : suspects) {
-      if (suspect.getCurrentRoom() == currentRoom) {
+      if (suspect.getCurrentRoom() == detective.getCurrentRoom()) {
         occupants.add(suspect.getName());
       }
     }
 
     // Check if Watson is in the current room
-    if (watson != null && watson.getCurrentRoom() == currentRoom) {
+    if (watson != null && watson.getCurrentRoom() == detective.getCurrentRoom()) {
       occupants.add("Dr. Watson");
     }
 
@@ -147,11 +146,11 @@ public class GameContext {
 
   // Getters and Setters
   public Room getCurrentRoom() {
-    return currentRoom;
+    return detective.getCurrentRoom();
   }
 
   public void setCurrentRoom(Room room) {
-    currentRoom = room;
+    detective.setCurrentRoom(room);
   }
 
   public Map<String, Room> getRooms() {

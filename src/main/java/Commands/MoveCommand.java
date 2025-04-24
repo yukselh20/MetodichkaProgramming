@@ -12,25 +12,21 @@ public class MoveCommand extends BaseCommand {
 
   @Override
   public void executeCommand(String[] args, GameContext context) {
-    // Validate input
-    if (args.length < 2) {
-      System.out.println("Usage: move [north|south|east|west|up|down]");
-      return;
-    }
-
     // Extract direction from arguments
     String direction = args[1].toLowerCase();
 
-    // Attempt to move the player
-    Room newRoom = context.getCurrentRoom().getNeighbor(direction);
+    // Get the detective's current room
+    Room currentRoom = context.getDetective().getCurrentRoom();
 
+    // Attempt to move the player
+    Room newRoom = currentRoom.getNeighbor(direction);
     if (newRoom == null) {
       System.out.println("You can't move in that direction.");
       return;
     }
 
-    // Update the current room in the context
-    context.setCurrentRoom(newRoom);
+    // Update the detective's current room
+    context.getDetective().setCurrentRoom(newRoom);
 
     // Update suspect and Watson movements
     context.updateMovements();

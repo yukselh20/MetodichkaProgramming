@@ -5,6 +5,7 @@ public class Detective {
   private String rank;
   private int deduceCount = 0; // Tracks how many times the player has used deduction
   private int finalExamScore = 0; // Tracks the score from the final exam
+  private Room currentRoom; // Player's current location
 
   public Detective(String name) {
     this.name = name;
@@ -33,6 +34,14 @@ public class Detective {
 
   public int getFinalExamScore() {
     return finalExamScore;
+  }
+
+  public Room getCurrentRoom() {
+    return currentRoom;
+  }
+
+  public void setCurrentRoom(Room room) {
+    this.currentRoom = room;
   }
 
   /** Evaluates the player's rank based on deduceCount and finalExamScore. */
