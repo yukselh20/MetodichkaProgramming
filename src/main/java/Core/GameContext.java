@@ -83,7 +83,8 @@ public class GameContext {
    */
   public void setWatson(DoctorWatson watson) {
     this.watson = watson;
-    this.watson.setCurrentRoom(detective.getCurrentRoom()); // Sync with the detective's current room
+    this.watson.setCurrentRoom(
+        detective.getCurrentRoom()); // Sync with the detective's current room
   }
 
   /**

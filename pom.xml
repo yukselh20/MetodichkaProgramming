@@ -19,8 +19,8 @@
 
   <!-- Properties -->
   <properties>
-    <maven.compiler.source>23</maven.compiler.source> <!-- Java version -->
-    <maven.compiler.target>23</maven.compiler.target> <!-- Java version -->
+    <maven.compiler.source>17</maven.compiler.source> <!-- Java version -->
+    <maven.compiler.target>17</maven.compiler.target> <!-- Java version -->
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 

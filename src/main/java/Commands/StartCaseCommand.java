@@ -39,7 +39,8 @@ public class StartCaseCommand extends BaseCommand {
     }
 
     // Display starting room details
-    Room currentRoom = context.getDetective().getCurrentRoom(); // Directly use getCurrentRoom from GameContext
+    Room currentRoom =
+        context.getDetective().getCurrentRoom(); // Directly use getCurrentRoom from GameContext
     System.out.println("\nYou are now at the starting location: " + currentRoom.getName());
     System.out.println(currentRoom.getDescription());
     displayExits(currentRoom);
