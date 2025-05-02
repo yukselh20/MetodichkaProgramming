@@ -12,16 +12,25 @@ public class CommandParser {
       return "";
     }
 
-    // Normalize input by trimming and converting to lowercase
-    String normalizedInput = input.toLowerCase().trim();
+    // Normalize input by trimming, collapsing multiple spaces, and converting to lowercase
+    String normalizedInput = input.trim().replaceAll("\\s+", " ").toLowerCase();
 
     // Handle multi-word commands explicitly
     if (normalizedInput.startsWith("final exam")) return "final exam";
-    if (normalizedInput.startsWith("journal add")) return "journal add";
     if (normalizedInput.startsWith("ask watson")) return "ask watson";
     if (normalizedInput.startsWith("start case")) return "start case";
+    if (normalizedInput.startsWith("journal add")) return "journal add";
+
+    // Handle single-word commands with optional arguments
+    String[] tokens = normalizedInput.split(" ");
+    String commandName = tokens[0];
+
+    // For "move", ensure the direction is extracted correctly even with extra spaces
+    if (commandName.equals("move") && tokens.length > 1) {
+      return "move"; // Return "move" as the command name
+    }
 
     // Default: Use the first word as the command name
-    return normalizedInput.split(" ")[0];
+    return commandName;
   }
 }

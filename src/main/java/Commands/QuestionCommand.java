@@ -23,7 +23,10 @@ public class QuestionCommand extends BaseCommand {
           == context.getCurrentRoom()) { // Use getCurrentRoom from GameContext
         String statement = suspect.getStatement();
         System.out.println(statement);
-        context.getJournal().addEntry(suspect.getName() + ": " + statement); // Add to journal
+
+        // Add the suspect's statement to the journal only if it's not already there
+        String journalEntry = suspect.getName() + ": " + statement;
+        context.getJournal().addEntry(journalEntry);
       } else {
         System.out.println("That suspect is not in this room.");
       }

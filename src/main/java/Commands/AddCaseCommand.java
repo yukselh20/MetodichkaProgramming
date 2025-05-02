@@ -23,7 +23,7 @@ public class AddCaseCommand {
       }
       CaseFile newCase = mapper.readValue(file, CaseFile.class);
 
-      // Check for duplicates
+      // Check for duplicates based on case title
       List<CaseFile> existingCases = loadExistingCases();
       for (CaseFile caseFile : existingCases) {
         if (caseFile.getTitle().equalsIgnoreCase(newCase.getTitle())) {
@@ -32,19 +32,31 @@ public class AddCaseCommand {
         }
       }
 
-      // Copy the file to the "cases" folder
+      // Copy the file to the "cases" folder with a unique name
       File casesFolder = new File("cases");
       if (!casesFolder.exists()) {
         casesFolder.mkdir();
       }
-      File destination = new File(casesFolder, file.getName());
-      if (destination.exists()) {
-        System.out.println("Error: Case file already exists in the 'cases' folder.");
-        return;
+
+      // Generate a unique file name
+      String originalFileName = file.getName();
+      String fileNameWithoutExtension =
+          originalFileName.substring(0, originalFileName.lastIndexOf('.'));
+      String extension = originalFileName.substring(originalFileName.lastIndexOf('.'));
+      File destination = new File(casesFolder, originalFileName);
+
+      int counter = 1;
+      while (destination.exists()) {
+        String newFileName = fileNameWithoutExtension + "_" + counter + extension;
+        destination = new File(casesFolder, newFileName);
+        counter++;
       }
+
+      // Copy the file to the destination
       Files.copy(file.toPath(), destination.toPath());
 
       System.out.println("Case '" + newCase.getTitle() + "' added successfully!");
+      System.out.println("File saved as: " + destination.getName());
     } catch (Exception e) {
       System.out.println("Error adding case: " + e.getMessage());
     }

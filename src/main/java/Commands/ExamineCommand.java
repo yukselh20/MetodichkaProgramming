@@ -11,7 +11,6 @@ public class ExamineCommand extends BaseCommand {
 
   @Override
   public void executeCommand(String[] args, GameContext context) {
-
     if (args.length < 2) {
       System.out.println("Usage: examine [object]");
       return;
@@ -27,8 +26,9 @@ public class ExamineCommand extends BaseCommand {
       // Display the detailed description of the object
       System.out.println("You examine the " + objectName + ": " + obj.getExamine());
 
-      // Optionally, add the object's description to the journal for reference
-      context.getJournal().addEntry("Examined: " + objectName + " - " + obj.getExamine());
+      // Add the object's description to the journal only if it's not already there
+      String journalEntry = "Examined: " + objectName + " - " + obj.getExamine();
+      context.getJournal().addEntry(journalEntry);
     } else {
       System.out.println("No such object in this room.");
     }

@@ -75,6 +75,13 @@ public class DetectiveGameMain {
   private static CaseFile selectCase(Scanner scanner, List<CaseFile> cases, String casesDir) {
     while (true) {
       System.out.print("Enter case number (0 to add case, 'quit' to exit game): ");
+
+      // Check if there is input available before reading
+      if (!scanner.hasNextLine()) {
+        System.out.println("\nInput stream closed. Exiting the game gracefully...");
+        return null; // Exit the method to terminate the program
+      }
+
       String input = scanner.nextLine().trim();
 
       try {
@@ -166,17 +173,72 @@ public class DetectiveGameMain {
 
     // Main command loop
     while (!context.isExitCurrentGame()) {
-      System.out.print("<CaseFile>");
+      System.out.print("<CaseFile> ");
+      // Check if there is input available before reading
+      if (!scanner.hasNextLine()) {
+        System.out.println("\nExiting the game gracefully...");
+        break; // Exit the loop and terminate the program
+      }
       String input = scanner.nextLine().trim();
       if (input.isEmpty()) continue;
 
-      Command command = CommandFactory.getCommand(CommandParser.parseCommand(input));
+      // Parse the command
+      String[] tokens = input.split(" ");
+      String commandName = CommandParser.parseCommand(input);
+
+      // Adjust tokens for multi-word commands
+      if (commandName.equals("move")) {
+        // Extract the direction from the normalized input
+        String normalizedInput = input.trim().replaceAll("\\s+", " ").toLowerCase();
+        String[] parts = normalizedInput.split(" ", 2); // Split into command and argument
+        if (parts.length > 1) {
+          tokens =
+              new String[] {"move", parts[1]}; // Ensure only "move" and the direction are in tokens
+        } else {
+          tokens = new String[] {"move"}; // Handle cases where no direction is provided
+        }
+      } else if (commandName.equals("question")
+          || commandName.equals("examine")
+          || commandName.equals("deduce")) {
+        // Extract the object/suspect name from the normalized input
+        String normalizedInput = input.trim().replaceAll("\\s+", " ").toLowerCase();
+        String[] parts = normalizedInput.split(" ", 2); // Split into command and argument
+        if (parts.length > 1) {
+          tokens =
+              new String[] {
+                commandName, parts[1]
+              }; // Ensure only the command and the object/suspect name are in tokens
+        } else {
+          tokens =
+              new String[] {commandName}; // Handle cases where no object/suspect name is provided
+        }
+      } else if (commandName.equals("journal add")) {
+        // Extract the note from the normalized input
+        String normalizedInput = input.trim().replaceAll("\\s+", " ").toLowerCase();
+        String[] parts = normalizedInput.split(" ", 3); // Split into "journal", "add", and the note
+        if (parts.length > 2) {
+          tokens =
+              new String[] {
+                "journal", "add", parts[2]
+              }; // Ensure only "journal", "add", and the note are in tokens
+        } else {
+          tokens = new String[] {"journal", "add"}; // Handle cases where no note is provided
+        }
+      }
+
+      // Execute the command
+      Command command = CommandFactory.getCommand(commandName);
       if (command != null) {
-        command.execute(input.split(" "), context);
+        command.execute(tokens, context);
+
+        // Update suspect/Watson positions after movement commands
+        if (commandName.equals("move") || commandName.equals("enter")) {
+          context.updateMovements();
+        }
       } else {
         System.out.println("Unknown command. Type 'help' for a list of commands.");
       }
     }
-    return false;
+    return true; // Indicate successful termination
   }
 }
