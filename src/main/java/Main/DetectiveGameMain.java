@@ -230,15 +230,10 @@ public class DetectiveGameMain {
       Command command = CommandFactory.getCommand(commandName);
       if (command != null) {
         command.execute(tokens, context);
-
-        // Update suspect/Watson positions after movement commands
-        if (commandName.equals("move") || commandName.equals("enter")) {
-          context.updateMovements();
-        }
       } else {
         System.out.println("Unknown command. Type 'help' for a list of commands.");
       }
     }
-    return true; // Indicate successful termination
+    return true;
   }
 }
