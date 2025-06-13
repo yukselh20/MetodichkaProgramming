@@ -1,12 +1,14 @@
 package Core;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import java.util.Random;
 
+/**
+ * An abstract base class for any character (player or NPC) that can occupy and move between rooms
+ * in the game world.
+ */
 public abstract class MovableCharacter {
   protected Room currentRoom;
+  // Each character instance gets its own Random object for independent decision-making.
   protected final Random random = new Random();
 
   public Room getCurrentRoom() {
@@ -14,19 +16,7 @@ public abstract class MovableCharacter {
   }
 
   public void setCurrentRoom(Room room) {
+    // A null room indicates the character has been removed from the game board.
     this.currentRoom = room;
-  }
-
-  /**
-   * Moves the character to a random neighboring room.
-   *
-   * @param context The GameContext object providing access to game data.
-   */
-  public void randomMove(GameContext context) {
-    Map<String, Room> neighbors = currentRoom.getNeighbors();
-    List<Room> allowedRooms = new ArrayList<>(neighbors.values());
-    if (!allowedRooms.isEmpty()) {
-      currentRoom = allowedRooms.get(random.nextInt(allowedRooms.size()));
-    }
   }
 }

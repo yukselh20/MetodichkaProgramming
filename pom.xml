@@ -19,9 +19,11 @@
 
   <!-- Properties -->
   <properties>
-    <maven.compiler.source>17</maven.compiler.source> <!-- Java version -->
-    <maven.compiler.target>17</maven.compiler.target> <!-- Java version -->
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- Define a property for the main class, to be set by profiles -->
+    <main.class/>
   </properties>
 
   <!-- Dependencies -->
@@ -31,6 +33,13 @@
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
       <version>2.15.2</version>
+    </dependency>
+
+    <!-- NEW: PostgreSQL JDBC Driver -->
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>42.7.5</version>
     </dependency>
 
     <!-- JUnit for Testing -->
@@ -56,7 +65,7 @@
         </configuration>
       </plugin>
 
-      <!-- Exec Plugin for Running the Main Class -->
+      <!-- Exec Plugin for Running the Main Class via Profiles -->
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
@@ -69,7 +78,7 @@
           </execution>
         </executions>
         <configuration>
-          <mainClass>Main.DetectiveGameMain</mainClass> <!-- Fully qualified name of the main class -->
+          <mainClass>${main.class}</mainClass>
         </configuration>
       </plugin>
 
@@ -77,7 +86,7 @@
       <plugin>
         <groupId>com.diffplug.spotless</groupId>
         <artifactId>spotless-maven-plugin</artifactId>
-        <version>2.44.3</version>
+        <version>2.44.3</version> <!-- Adjusted for broader compatibility -->
         <configuration>
           <java>
             <googleJavaFormat>
@@ -102,15 +111,40 @@
             <configuration>
               <createDependencyReducedPom>false</createDependencyReducedPom>
               <transformers>
-                <!-- Add Main-Class to MANIFEST.MF -->
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                  <mainClass>Main.DetectiveGameMain</mainClass> <!-- Fully qualified name of the main class -->
+                  <mainClass>${main.class}</mainClass>
                 </transformer>
               </transformers>
+              <!-- The finalName will be modified by the active profile -->
             </configuration>
           </execution>
         </executions>
       </plugin>
     </plugins>
   </build>
+
+  <!-- RECOMMENDED: Build Profiles for Client/Server -->
+  <profiles>
+    <profile>
+      <id>server</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <properties>
+        <main.class>server.ServerMain</main.class>
+      </properties>
+      <build>
+        <finalName>${project.artifactId}-server</finalName>
+      </build>
+    </profile>
+    <profile>
+      <id>client</id>
+      <properties>
+        <main.class>client.ClientMain</main.class>
+      </properties>
+      <build>
+        <finalName>${project.artifactId}-client</finalName>
+      </build>
+    </profile>
+  </profiles>
 </project>
