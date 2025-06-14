@@ -15,23 +15,20 @@ public class DatabaseManager {
 
   private static final Logger logger = LoggerFactory.getLogger(DatabaseManager.class);
 
-  // The database URL is now a mandatory environment variable.
   private static final String DATABASE_URL =
-          Objects.requireNonNull(
-                  System.getenv("DB_URL"),
-                  "FATAL: Database URL not set. Please set the DB_URL environment variable.");
+      Objects.requireNonNull(
+          System.getenv("DB_URL"),
+          "FATAL: Database URL not set. Please set the DB_URL environment variable.");
 
-  // The database user is now a mandatory environment variable.
   private static final String DATABASE_USER =
-          Objects.requireNonNull(
-                  System.getenv("DB_USER"),
-                  "FATAL: Database user not set. Please set the DB_USER environment variable.");
+      Objects.requireNonNull(
+          System.getenv("DB_USER"),
+          "FATAL: Database user not set. Please set the DB_USER environment variable.");
 
-  // The database password is now a mandatory environment variable.
   private static final String DATABASE_PASSWORD =
-          Objects.requireNonNull(
-                  System.getenv("DB_PASSWORD"),
-                  "FATAL: Database password not set. Please set the DB_PASSWORD environment variable.");
+      Objects.requireNonNull(
+          System.getenv("DB_PASSWORD"),
+          "FATAL: Database password not set. Please set the DB_PASSWORD environment variable.");
 
   /** Private constructor to prevent instantiation of this utility class. */
   private DatabaseManager() {}
