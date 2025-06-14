@@ -1,5 +1,6 @@
 package server;
 
+// Import the full CaseFile DTO
 import common.Commands.*;
 import common.NetworkConstants;
 import common.dto.*;
@@ -38,6 +39,8 @@ public class GameSessionManager {
   private final UserDAO userDAO;
   private final GameSessionDAO gameSessionDAO;
 
+  private final Map<Integer, String> loggedInUserToPlayerId = new ConcurrentHashMap<>();
+
   public GameSessionManager(GameServer gameServer, String casesDir) {
     this.gameServer = Objects.requireNonNull(gameServer);
     this.casesDir = Objects.requireNonNull(casesDir);
@@ -48,10 +51,9 @@ public class GameSessionManager {
 
   public synchronized void handleNewClientConnection(ClientSession newClient) {
     logger.info(
-        "SessionManager: New client {}. Waiting for their case list.", newClient.getPlayerId());
+        "SessionManager: New client {}. Waiting for them to log in.", newClient.getPlayerId());
     gameServer.queueWrite(
-        newClient.getChannel(),
-        new TextMessage("Welcome! Connected to server. Sending your case list..."));
+        newClient.getChannel(), new TextMessage("Welcome! Please log in or register to continue."));
   }
 
   /**
@@ -82,11 +84,9 @@ public class GameSessionManager {
 
   // A synchronized router for all messages from clients who are not yet in an active game.
   private synchronized void handleLobbyOrSetupMessage(ClientSession senderSession, Object message) {
-    // --- DEBUG ---
     logger.debug("SessionManager: Received message of type {}", message.getClass().getSimpleName());
 
     if (message instanceof RegisterCommand cmd) {
-      // --- DEBUG ---
       logger.debug("SessionManager: Identified RegisterCommand. Calling handleRegister...");
       handleRegister(senderSession, cmd.getUsername(), cmd.getPassword());
       return;
@@ -127,7 +127,6 @@ public class GameSessionManager {
           .forEach(cs -> gameServer.queueWrite(cs.getChannel(), lobbyChat));
     } else {
       // This is the catch-all for any other message type.
-      // It now sends a clear error message back to the client.
       logger.error(
           "SessionManager: Received unhandled message type '{}' from player {} in lobby.",
           message.getClass().getSimpleName(),
@@ -143,7 +142,9 @@ public class GameSessionManager {
    * cases on the server.
    */
   private synchronized void registerClientCases(ClientCaseListDTO caseListDTO) {
-    if (caseListDTO == null || caseListDTO.getCases() == null) return;
+    if (caseListDTO == null || caseListDTO.getCases() == null) {
+      return;
+    }
 
     boolean changed = false;
     for (CaseInfoDTO clientCase : caseListDTO.getCases()) {
@@ -159,8 +160,7 @@ public class GameSessionManager {
 
     if (changed) {
       logger.info(
-          "SessionManager: Unique case registry updated. Total unique cases: {}",
-          uniqueAvailableCases.size());
+          "Unique case registry updated. Total unique cases: {}", uniqueAvailableCases.size());
     }
   }
 
@@ -176,8 +176,6 @@ public class GameSessionManager {
         client.getPlayerId());
     gameServer.queueWrite(client.getChannel(), new AvailableCasesDTO(sortedCases));
   }
-
-  // Add these two new private methods anywhere inside the GameSessionManager class.
 
   /** Handles a registration request from a client. */
   private void handleRegister(ClientSession senderSession, String username, String password) {
@@ -196,12 +194,8 @@ public class GameSessionManager {
       return;
     }
 
-    // --- DEBUG ---
     logger.debug("handleRegister: Calling userDAO.addUser for user '{}'...", username);
-
     Optional<User> newUser = userDAO.addUser(username, password);
-
-    // --- DEBUG ---
     logger.debug("handleRegister: userDAO.addUser has returned.");
 
     if (newUser.isPresent()) {
@@ -219,7 +213,7 @@ public class GameSessionManager {
     }
   }
 
-  /** Handles a login request from a client. */
+  /** Handles a login request from a client, enforcing a single-session policy. */
   private void handleLogin(ClientSession senderSession, String username, String password) {
     if (senderSession.getAuthenticatedUser() != null) {
       gameServer.queueWrite(
@@ -230,37 +224,54 @@ public class GameSessionManager {
       return;
     }
 
-    // Use the DAO to get the stored hash for the user.
+    Optional<User> userOpt = userDAO.findUserByUsername(username);
+
+    if (userOpt.isEmpty()) {
+      gameServer.queueWrite(
+          senderSession.getChannel(), new TextMessage("Error: Invalid username or password."));
+      return;
+    }
+
+    User user = userOpt.get();
+
+    if (loggedInUserToPlayerId.containsKey(user.getId())) {
+      logger.warn(
+          "Login rejected for user '{}': already logged in under session {}",
+          username,
+          loggedInUserToPlayerId.get(user.getId()));
+      gameServer.queueWrite(
+          senderSession.getChannel(), new TextMessage("Error: This user is already logged in."));
+      return;
+    }
+
     Optional<String> storedHashOpt = userDAO.getPasswordHashForUser(username);
 
     if (storedHashOpt.isPresent()) {
-      // If the user exists, verify the provided password against the stored hash.
       boolean passwordMatches = PasswordHasher.verify(password, storedHashOpt.get());
 
       if (passwordMatches) {
-        // On successful login, find the full User object and attach it to the ClientSession.
-        userDAO
-            .findUserByUsername(username)
-            .ifPresent(
-                user -> {
-                  senderSession.setAuthenticatedUser(user);
-                  gameServer.queueWrite(
-                      senderSession.getChannel(),
-                      new TextMessage("Login successful. Welcome, " + user.getUsername() + "!"));
-                  logger.info(
-                      "Player {} logged in as user {}",
-                      senderSession.getPlayerId(),
-                      user.getUsername());
-                  // After successful login, immediately send the available cases.
-                  sendAvailableCases(senderSession);
-                });
+        senderSession.setAuthenticatedUser(user);
+        loggedInUserToPlayerId.put(user.getId(), senderSession.getPlayerId());
+
+        gameServer.queueWrite(
+            senderSession.getChannel(),
+            new TextMessage("Login successful. Welcome, " + user.getUsername() + "!"));
+        logger.info(
+            "Player {} logged in as user {} (ID: {}).",
+            senderSession.getPlayerId(),
+            user.getUsername(),
+            user.getId());
+        gameServer.queueWrite(
+            senderSession.getChannel(),
+            new TextMessage("CMD_REQUEST_CASES")); // A special, non-visible command
+
       } else {
         gameServer.queueWrite(
             senderSession.getChannel(), new TextMessage("Error: Invalid username or password."));
       }
     } else {
       gameServer.queueWrite(
-          senderSession.getChannel(), new TextMessage("Error: Invalid username or password."));
+          senderSession.getChannel(), new TextMessage("Error: Could not verify password."));
     }
   }
 
@@ -270,7 +281,6 @@ public class GameSessionManager {
    */
   private synchronized void handleHostRequest(
       ClientSession hostClient, String caseTitle, boolean isPublic) {
-    // --- SECURITY CHECK ---
     if (hostClient.getAuthenticatedUser() == null) {
       gameServer.queueWrite(
           hostClient.getChannel(), new TextMessage("Error: You must be logged in to host a game."));
@@ -355,7 +365,6 @@ public class GameSessionManager {
 
   private synchronized void handleJoinPublicGame(
       ClientSession joiningClient, String targetSessionId) {
-    // Security Check: Ensure the user is logged in before allowing them to join a game.
     if (joiningClient.getAuthenticatedUser() == null) {
       gameServer.queueWrite(
           joiningClient.getChannel(),
@@ -363,7 +372,6 @@ public class GameSessionManager {
       return;
     }
 
-    // Validation: Ensure the player is not already in another game session.
     if (joiningClient.getGameSessionId() != null) {
       gameServer.queueWrite(
           joiningClient.getChannel(),
@@ -373,38 +381,25 @@ public class GameSessionManager {
 
     GameSession targetSession = pendingPublicGames.get(targetSessionId);
 
-    // Check if the target session exists and is not full.
     if (targetSession != null
         && targetSession.getPlayerCount() < NetworkConstants.MAX_PLAYERS_PER_GAME) {
-      // Since the game is now full, remove it from the list of pending public games.
       pendingPublicGames.remove(targetSessionId);
-
-      // Update the client's state to associate them with this session.
       joiningClient.setGameSessionId(targetSessionId);
       targetSession.addPlayer(joiningClient);
-
-      // Notify the joining player that they have successfully joined.
       gameServer.queueWrite(
           joiningClient.getChannel(),
           new JoinGameResponseDTO(
               true,
               "Joined public game '" + targetSession.getSelectedCaseInfo().getTitle() + "'!",
               targetSessionId));
-
-      // Notify the existing players (the host) that a new player has joined.
       targetSession.broadcastToSession(
           new LobbyUpdateDTO(
               joiningClient.getPlayerId() + " joined! Starting game...",
               targetSession.getPlayerIds()),
           joiningClient.getPlayerId());
-
-      // Kick off the case loading process now that the lobby is full.
       targetSession.initializeSession();
-
-      // The client is no longer in the general lobby.
       lobby.remove(joiningClient);
     } else {
-      // The session was not found or was already full.
       gameServer.queueWrite(
           joiningClient.getChannel(),
           new JoinGameResponseDTO(false, "Game lobby not found or full.", null));
@@ -412,7 +407,6 @@ public class GameSessionManager {
   }
 
   private synchronized void handleJoinPrivateGame(ClientSession joiningClient, String privateCode) {
-    // Security Check: Ensure the user is logged in before allowing them to join a game.
     if (joiningClient.getAuthenticatedUser() == null) {
       gameServer.queueWrite(
           joiningClient.getChannel(),
@@ -420,7 +414,6 @@ public class GameSessionManager {
       return;
     }
 
-    // Validation: Ensure the player is not already in another game session.
     if (joiningClient.getGameSessionId() != null) {
       gameServer.queueWrite(
           joiningClient.getChannel(),
@@ -431,56 +424,51 @@ public class GameSessionManager {
     String targetSessionId = privateGameCodes.get(privateCode);
 
     if (targetSessionId != null) {
-      // For private games, the session is in the main `activeSessions` map from the moment it's
-      // created.
       GameSession targetSession = activeSessions.get(targetSessionId);
 
-      // Check if the target session exists and is not full.
       if (targetSession != null
           && targetSession.getPlayerCount() < NetworkConstants.MAX_PLAYERS_PER_GAME) {
-        // The private code is single-use; remove it once a player successfully joins.
         privateGameCodes.remove(privateCode);
-
-        // Update the client's state to associate them with this session.
         joiningClient.setGameSessionId(targetSessionId);
         targetSession.addPlayer(joiningClient);
-
-        // Notify the joining player that they have successfully joined.
         gameServer.queueWrite(
             joiningClient.getChannel(),
             new JoinGameResponseDTO(
                 true,
                 "Joined private game '" + targetSession.getSelectedCaseInfo().getTitle() + "'!",
                 targetSessionId));
-
-        // Notify the existing players (the host) that a new player has joined.
         targetSession.broadcastToSession(
             new LobbyUpdateDTO(
                 joiningClient.getPlayerId() + " joined! Starting game...",
                 targetSession.getPlayerIds()),
             joiningClient.getPlayerId());
-
-        // Kick off the case loading process now that the lobby is full.
         targetSession.initializeSession();
-
-        // The client is no longer in the general lobby.
         lobby.remove(joiningClient);
       } else {
-        // This can happen if the host disconnected or if another player joined first.
         gameServer.queueWrite(
             joiningClient.getChannel(),
             new JoinGameResponseDTO(false, "Private game full or code expired.", null));
       }
     } else {
-      // The provided code does not match any active private games.
       gameServer.queueWrite(
           joiningClient.getChannel(),
           new JoinGameResponseDTO(false, "Invalid private game code.", null));
     }
   }
 
-  // A synchronized method to handle all logic related to a client disconnecting.
+  /** Handles all logic for a client disconnecting, including logging them out. */
   public synchronized void handleClientDisconnect(ClientSession disconnectedClient) {
+    // Log the user out from our centralized active user map.
+    User authenticatedUser = disconnectedClient.getAuthenticatedUser();
+    if (authenticatedUser != null) {
+      loggedInUserToPlayerId.remove(authenticatedUser.getId());
+      logger.info(
+          "User '{}' (ID: {}) has been logged out from session {}.",
+          authenticatedUser.getUsername(),
+          authenticatedUser.getId(),
+          disconnectedClient.getPlayerId());
+    }
+
     lobby.remove(disconnectedClient);
     String gameSessionId = disconnectedClient.getGameSessionId();
     if (gameSessionId == null) {
@@ -493,7 +481,6 @@ public class GameSessionManager {
     }
 
     if (session != null) {
-      // Logic is delegated to the session itself, which knows if the host left.
       boolean sessionShouldBeTerminated =
           session.handlePlayerDisconnect(disconnectedClient.getPlayerId());
       if (sessionShouldBeTerminated) {
@@ -502,7 +489,6 @@ public class GameSessionManager {
     }
   }
 
-  /** Completely removes a game session from all tracking lists, ensuring a clean state. */
   public synchronized void removeSession(String sessionId) {
     if (sessionId == null) return;
     GameSession removedSession = activeSessions.remove(sessionId);
@@ -526,7 +512,6 @@ public class GameSessionManager {
     return this.gameSessionDAO;
   }
 
-  // A helper method to find a client's session object using their player ID.
   public ClientSession getClientSessionByPlayerId(String playerId) {
     for (ClientSession session : gameServer.getClients().values()) {
       if (session.getPlayerId().equals(playerId)) {

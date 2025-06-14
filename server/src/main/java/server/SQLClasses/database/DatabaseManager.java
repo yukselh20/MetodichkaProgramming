@@ -16,7 +16,7 @@ public class DatabaseManager {
 
   // Reads the DB_URL environment variable.
   private static final String DATABASE_URL =
-          System.getenv().getOrDefault("DB_URL", "jdbc:postgresql://pg:5432/studs");
+      System.getenv().getOrDefault("DB_URL", "jdbc:postgresql://pg:5432/studs");
 
   // Reads the DB_USER environment variable.
   private static final String DATABASE_USER = System.getenv().getOrDefault("DB_USER", "s407888");
@@ -24,7 +24,7 @@ public class DatabaseManager {
   // Reads the DB_PASSWORD environment variable.
   // FOR THE LAB: The default value is set to the required password.
   private static final String DATABASE_PASSWORD =
-          System.getenv().getOrDefault("DB_PASSWORD", "CdZk56wMxVBYV2lE");
+      System.getenv().getOrDefault("DB_PASSWORD", "CdZk56wMxVBYV2lE");
 
   /** Private constructor to prevent instantiation of this utility class. */
   private DatabaseManager() {}
@@ -41,8 +41,8 @@ public class DatabaseManager {
       Class.forName("org.postgresql.Driver");
     } catch (ClassNotFoundException e) {
       logger.error(
-              "FATAL: PostgreSQL JDBC Driver not found. Make sure it's in your pom.xml or build.gradle.",
-              e);
+          "FATAL: PostgreSQL JDBC Driver not found. Make sure it's in your pom.xml or build.gradle.",
+          e);
       throw new RuntimeException("PostgreSQL JDBC Driver not found.", e);
     }
     return DriverManager.getConnection(DATABASE_URL, DATABASE_USER, DATABASE_PASSWORD);

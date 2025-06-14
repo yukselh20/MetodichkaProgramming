@@ -191,6 +191,12 @@ public class GameClient {
         String content = ((TextMessage) response).getContent();
         ui.displayMessage("[Server] " + content);
 
+        if (content.equals("CMD_REQUEST_CASES")) {
+          logger.info("Server requested case list. Scanning local 'cases' directory...");
+          List<CaseInfoDTO> localCases = ClientCaseLoader.loadLocalCaseInfo("cases");
+          networkManager.sendMessage(new ClientCaseListDTO(localCases));
+          return;
+        }
 
         // On successful registration, we return the user to the auth menu to log in
         if (content.startsWith("Registration successful")) {
@@ -324,7 +330,7 @@ public class GameClient {
 
   // This method kicks off the connection process without blocking the input thread.
   // The outcome of the connection attempt will be handled by a callback.
-// In GameClient.java
+  // In GameClient.java
   private void initiateMultiplayerConnection() {
     // Show the user we are attempting to connect.
     changeState(ClientState.CONNECTING);
