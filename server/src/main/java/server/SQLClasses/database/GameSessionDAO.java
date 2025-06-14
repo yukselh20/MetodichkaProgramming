@@ -63,6 +63,6 @@ public class GameSessionDAO {
     }
   }
 
-  // Note: We will implement the `load` and `delete` methods later as needed.
+  // Note: will implement the `load` and `delete` methods later.
   // For now, saveOrUpdateGameState is the priority for automatic saving.
 }
