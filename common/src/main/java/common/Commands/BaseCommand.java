@@ -4,6 +4,8 @@ import common.ICommandContext;
 import common.dto.TextMessage;
 import java.io.Serializable;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * An abstract base for all command objects, implementing the Template Method pattern. It handles
@@ -11,6 +13,8 @@ import java.util.Objects;
  * subclasses to focus solely on their specific logic.
  */
 public abstract class BaseCommand implements Command, Serializable {
+
+  private static final Logger logger = LoggerFactory.getLogger(BaseCommand.class);
 
   private static final long serialVersionUID = 100L;
 
@@ -35,9 +39,9 @@ public abstract class BaseCommand implements Command, Serializable {
     Objects.requireNonNull(context, "Command context cannot be null for command execution.");
 
     if (this.playerId == null) {
-      System.err.println(
-          "CRITICAL SERVER ERROR: Command executed with null playerId! Command: "
-              + this.getClass().getSimpleName());
+      logger.error(
+          "CRITICAL SERVER ERROR: Command executed with null playerId! Command: {}",
+          this.getClass().getSimpleName());
       return;
     }
 
@@ -57,14 +61,11 @@ public abstract class BaseCommand implements Command, Serializable {
     } catch (Exception e) {
       // This generic catch block ensures that an error in a single command
       // does not crash the entire game session for the player.
-      System.err.println(
-          "SERVER ERROR: Exception during execution of command "
-              + this.getClass().getSimpleName()
-              + " for player "
-              + playerId
-              + ": "
-              + e.getMessage());
-      e.printStackTrace();
+      logger.error(
+          "Exception during execution of command {} for player {}",
+          this.getClass().getSimpleName(),
+          playerId,
+          e);
       context.sendResponseToPlayer(
           playerId, new TextMessage("An internal error occurred while processing your command."));
     }

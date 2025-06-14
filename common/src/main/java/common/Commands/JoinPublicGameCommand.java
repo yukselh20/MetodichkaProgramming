@@ -3,12 +3,15 @@ package common.Commands;
 import common.ICommandContext;
 import java.io.Serializable;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A command representing a client's request to join a specific public game lobby identified by its
  * session ID.
  */
 public class JoinPublicGameCommand extends BaseCommand implements Serializable {
+  private static final Logger logger = LoggerFactory.getLogger(JoinPublicGameCommand.class);
   private static final long serialVersionUID = 116L;
   private final String targetGameSessionId;
 
@@ -30,10 +33,9 @@ public class JoinPublicGameCommand extends BaseCommand implements Serializable {
     // Similar to other lobby commands, this should be handled by the
     // GameSessionManager. This code block serves as a safeguard against
     // incorrect message routing.
-    System.err.println(
-        "SERVER WARNING: JoinPublicGameCommand reached GameContextServer for player "
-            + getPlayerId()
-            + ". This command should be handled by GameSessionManager.");
+    logger.warn(
+        "JoinPublicGameCommand reached GameContextServer for player {}. This indicates a message routing error and should be handled by GameSessionManager.",
+        getPlayerId());
     context.sendResponseToPlayer(
         getPlayerId(),
         new common.dto.TextMessage("Error: Cannot join a game while already in a session."));

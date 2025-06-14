@@ -3,11 +3,14 @@ package common.Commands;
 import common.ICommandContext;
 import java.io.Serializable;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A command representing a client's request to join a private game session using a specific code.
  */
 public class JoinPrivateGameCommand extends BaseCommand implements Serializable {
+  private static final Logger logger = LoggerFactory.getLogger(JoinPrivateGameCommand.class);
   private static final long serialVersionUID = 117L;
   private final String privateCode;
 
@@ -27,10 +30,9 @@ public class JoinPrivateGameCommand extends BaseCommand implements Serializable 
     // This command should be intercepted by the GameSessionManager. If it reaches
     // a GameContext, it means the player is already in a session, which is an
     // invalid state for this action. This block handles that error case.
-    System.err.println(
-        "SERVER WARNING: JoinPrivateGameCommand reached GameContextServer for player "
-            + getPlayerId()
-            + ". This command should be handled by GameSessionManager.");
+    logger.warn(
+        "JoinPrivateGameCommand reached GameContextServer for player {}. This indicates a message routing error and should be handled by GameSessionManager.",
+        getPlayerId());
     context.sendResponseToPlayer(
         getPlayerId(),
         new common.dto.TextMessage("Error: Cannot join a game while already in a session."));

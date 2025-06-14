@@ -2,9 +2,12 @@ package common.Commands;
 
 import common.ICommandContext;
 import java.io.Serializable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A command representing a client's request for a list of open public games. */
 public class ListPublicGamesCommand extends BaseCommand implements Serializable {
+  private static final Logger logger = LoggerFactory.getLogger(ListPublicGamesCommand.class);
   private static final long serialVersionUID = 115L;
 
   public ListPublicGamesCommand() {
@@ -17,10 +20,9 @@ public class ListPublicGamesCommand extends BaseCommand implements Serializable 
     // This action should be handled by the GameSessionManager, which oversees
     // all lobbies. If it reaches a specific GameContext, the player is already
     // in a game, so this block handles the error condition.
-    System.err.println(
-        "SERVER WARNING: ListPublicGamesCommand reached GameContextServer for player "
-            + getPlayerId()
-            + ". This command should be handled by GameSessionManager.");
+    logger.warn(
+        "ListPublicGamesCommand reached GameContextServer for player {}. This indicates a message routing error and should be handled by GameSessionManager.",
+        getPlayerId());
     context.sendResponseToPlayer(
         getPlayerId(),
         new common.dto.TextMessage("Error: Cannot list public games while already in a session."));
