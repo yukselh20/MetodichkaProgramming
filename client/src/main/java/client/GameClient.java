@@ -511,7 +511,7 @@ public class GameClient {
         changeState(ClientState.ENTERING_PRIVATE_CODE);
         break;
       case "back":
-        changeState(ClientState.CHOOSING_HOST_MODE);
+        changeState(ClientState.JOIN_GAME_MENU);
         break;
       default:
         ui.displayMessage("Invalid choice. Please enter 1, 2, or back.");
@@ -570,7 +570,7 @@ public class GameClient {
 
   private void handlePrivateCodeInput(String input) {
     if (input.equalsIgnoreCase("back")) {
-      changeState(ClientState.CHOOSING_JOIN_MODE);
+      changeState(ClientState.JOIN_GAME_MENU);
       return;
     }
     // A simple regex check ensures the private code format is correct before sending.
