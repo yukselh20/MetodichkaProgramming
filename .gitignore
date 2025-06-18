@@ -5,6 +5,7 @@ out/
 *.iml
 *.ipr
 *.iws
+*.bat
 .idea/
 target/
 # Ignore compiled Java classes
