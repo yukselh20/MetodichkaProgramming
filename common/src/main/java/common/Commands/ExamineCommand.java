@@ -8,16 +8,13 @@ import common.dto.TextMessage;
 import java.io.Serializable;
 import java.util.Objects;
 
-/**
- * A command that allows a player to inspect an object in their current room, revealing a
- * description and adding the finding to their journal.
- */
+// This command allows a player to inspect an object in their current room,
+// revealing a description and adding the finding to their journal.
 public class ExamineCommand extends BaseCommand implements Serializable {
   private static final long serialVersionUID = 103L;
   private final String targetObjectName;
 
   public ExamineCommand(String targetObjectName) {
-    // Examining objects is only possible after the case has started.
     super(true);
     this.targetObjectName =
         Objects.requireNonNull(targetObjectName, "Target object name cannot be null").toLowerCase();
@@ -53,8 +50,6 @@ public class ExamineCommand extends BaseCommand implements Serializable {
       String responseMsg = "You examine the " + targetObjectName + ": " + examineText;
       context.sendResponseToPlayer(playerId, new TextMessage(responseMsg));
 
-      // Discoveries from examining objects are automatically added to the
-      // player's journal to help them keep track of clues.
       String journalEntry = "Examined " + targetObjectName + ": " + examineText;
       context.addEntryToJournal(journalEntry, playerId);
     } else {

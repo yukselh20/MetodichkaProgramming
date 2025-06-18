@@ -2,10 +2,8 @@ package Core;
 
 import java.util.Objects;
 
-/**
- * Represents an NPC suspect in the case. A suspect is a movable character who has a name, a
- * statement to give when questioned, and may hold a clue.
- */
+// This represents an NPC suspect in the case. A suspect is a movable character who
+// has a name, a statement to give when questioned, and may hold a clue.
 public class Suspect extends MovableCharacter {
   private final String name;
   private final String statement;
@@ -15,7 +13,6 @@ public class Suspect extends MovableCharacter {
     this.name = Objects.requireNonNull(name, "Suspect name cannot be null.");
     if (name.isBlank()) throw new IllegalArgumentException("Suspect name cannot be blank.");
     this.statement = (statement != null) ? statement : "No comment.";
-    // A suspect is not required to have a clue.
     this.clue = clue;
   }
 

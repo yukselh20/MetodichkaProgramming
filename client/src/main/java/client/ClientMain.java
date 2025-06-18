@@ -5,10 +5,8 @@ import java.util.Scanner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * The main entry point for the client application. Its purpose is to initialize and start the
- * GameClient.
- */
+// This is the main entry point for the client application. Its purpose is to initialize
+// and start the GameClient.
 public class ClientMain {
   private static final Logger logger = LoggerFactory.getLogger(ClientMain.class);
 
@@ -16,8 +14,7 @@ public class ClientMain {
     String host = NetworkConstants.DEFAULT_HOST;
     int port = NetworkConstants.DEFAULT_PORT;
 
-    // Command-line arguments provide a simple way to override the
-    // default host and port for connecting to different servers.
+    // allows the command-line arguments to override the default host and port.
     if (args.length > 0) {
       host = args[0];
       if (args.length > 1) {
@@ -32,8 +29,7 @@ public class ClientMain {
     logger.info("Attempting to connect to server at {}:{}", host, port);
 
     GameClient client = new GameClient(host, port);
-    // The try-with-resources statement ensures that the Scanner is always
-    // closed properly, preventing resource leaks.
+    // try-with-resources statement is used here to ensure the Scanner is always closed properly.
     try (Scanner scanner = new Scanner(System.in)) {
       client.start(scanner);
     } catch (Exception e) {

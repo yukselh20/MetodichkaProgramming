@@ -3,13 +3,13 @@ package common.Commands;
 import common.ICommandContext;
 import java.util.Objects;
 
-/** A command sent from the client to the server to log in an existing user. */
+// I send this command from the client to the server to log in an existing user.
 public class LoginCommand extends BaseCommand {
   private final String username;
   private final String password;
 
   public LoginCommand(String username, String password) {
-    super(false); // Login doesn't require a case to be started.
+    super(false);
     this.username = Objects.requireNonNull(username);
     this.password = Objects.requireNonNull(password);
   }
@@ -24,8 +24,8 @@ public class LoginCommand extends BaseCommand {
 
   @Override
   protected void executeCommand(String[] args, ICommandContext context) {
-    // This command is handled by the GameSessionManager, not the GameContext.
-    // This method should not be called.
+    // This command is handled by the GameSessionManager, not the GameContext,
+    // so this method should not be called.
   }
 
   @Override

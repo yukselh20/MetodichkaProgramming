@@ -5,10 +5,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
-/**
- * A DTO representing a single, structured entry in the game's journal. This is used to broadcast
- * journal updates to all players in a session.
- */
+// This DTO represents a single, structured entry in the game's journal. I use it
+// to broadcast journal updates to all players in a session.
 public class JournalEntryDTO implements Serializable {
   private static final long serialVersionUID = 5L;
 
@@ -36,8 +34,6 @@ public class JournalEntryDTO implements Serializable {
     return timestamp;
   }
 
-  // Provides a standardized format for displaying entries, ensuring
-  // a consistent look and feel across the application.
   public String getFormattedEntry() {
     return String.format("[%s] %s: %s", timestamp.format(TIME_FORMATTER), contributorId, entryText);
   }

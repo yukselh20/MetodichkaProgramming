@@ -4,10 +4,8 @@ import common.dto.CaseInfoDTO;
 import common.dto.PublicGameInfoDTO;
 import common.dto.RoomDescriptionDTO;
 
-/**
- * Manages all user-facing console output. Its responsibility is to render information based on the
- * current client state, separating display logic from the application's core processing logic.
- */
+// this was created to manage all user-facing console output. It renders information
+// based on the current client state, separating display logic from core processing.
 public class ClientUserInterface {
 
   private final ClientStateManager stateManager;
@@ -18,9 +16,8 @@ public class ClientUserInterface {
     this.consoleLock = consoleLock;
   }
 
-  // All console output is synchronized on a shared lock. This prevents
-  // messages from different threads (e.g., server responses and local
-  // prompts) from interleaving and corrupting the display.
+  // synchronizes all console output on a shared lock. This prevents messages
+  // from different threads from interleaving and corrupting the display.
   public void displayMessage(String message) {
     synchronized (consoleLock) {
       System.out.println(message);
@@ -33,8 +30,7 @@ public class ClientUserInterface {
     }
   }
 
-  // This central method displays the appropriate menu or information by
-  // querying the current state from the ClientStateManager.
+  // This central method displays the right menu/info by querying the ClientStateManager.
   public void printCurrentStateInfo() {
     synchronized (consoleLock) {
       ClientState state = stateManager.getCurrentState();
@@ -54,11 +50,11 @@ public class ClientUserInterface {
           break;
         case AWAITING_LOGIN_INPUT:
           System.out.println("\nPlease enter your credentials.");
-          System.out.println("Usage: login <username> <password>");
+          System.out.println("Usage:<username> <password>, or type 'back'");
           break;
         case AWAITING_REGISTER_INPUT:
           System.out.println("\nPlease choose a username and password.");
-          System.out.println("Usage: register <username> <password>");
+          System.out.println("Usage:<username> <password>, or type 'back'");
           break;
         case ADDING_CASE:
           System.out.println("\n--- Add Local Case ---");
@@ -81,7 +77,7 @@ public class ClientUserInterface {
           System.out.println("\n--- Available Cases ---");
           var cases = stateManager.getAvailableCasesCache();
           if (cases.isEmpty()) {
-            System.out.println("No cases found on the server. Type 'refresh' or 'quit'.");
+            System.out.println("No cases found on the server. Type 'refresh' or 'back'.");
           } else {
             int i = 1;
             for (CaseInfoDTO caseInfo : cases) {
@@ -90,19 +86,11 @@ public class ClientUserInterface {
             System.out.println("Enter case number to select, or type 'refresh' or 'back'.");
           }
           break;
-        case VIEWING_CASE_DETAILS:
-          System.out.println("\n--- Case Details ---");
-          String title = stateManager.getSelectedCaseTitleCache();
-          String desc = stateManager.getSelectedCaseDescriptionCache();
-          System.out.println("Title: " + (title != null ? title : "N/A"));
-          System.out.println("Description: " + (desc != null && !desc.isEmpty() ? desc : "N/A"));
-          System.out.println("\nChoose: [1] Host Game, [2] Join Game, [back]");
-          break;
         case CHOOSING_HOST_MODE:
-          System.out.println("Host as: [1] Public, [2] Private, [back]");
-          break;
-        case CHOOSING_JOIN_MODE:
-          System.out.println("Join: [1] Browse Public, [2] Enter Private Code, [back]");
+          System.out.println("\n--- Host Game ---");
+          System.out.println("1. Host Public Game");
+          System.out.println("2. Host Private Game");
+          System.out.println("3. Back to Multiplayer Menu");
           break;
         case BROWSING_PUBLIC_GAMES:
           System.out.println("\n--- Public Games Available ---");
@@ -147,8 +135,6 @@ public class ClientUserInterface {
         case GUEST_READY_TO_START:
           System.out.println("Game ready! Waiting for the host to start the case.");
           break;
-          // For some states, no specific info is needed because context is
-          // provided by server messages. Displaying only the prompt is sufficient.
         case IN_GAME:
         case FINAL_EXAM_ACTIVE:
           break;
@@ -175,7 +161,7 @@ public class ClientUserInterface {
           System.out.println("Current state: " + state);
           break;
       }
-      // The prompt is printed only after the state-specific info has been displayed.
+      // I print the prompt only after the state-specific info has been displayed.
       printPrompt();
     }
   }
@@ -188,18 +174,21 @@ public class ClientUserInterface {
     }
   }
 
-  // This helper determines whether to show a ">" prompt to the user.
-  // It is only displayed for states that actively await user input.
+  // This helper determines if I should show a ">" prompt to the user.
+  // I only display it for states that actively await user input.
   private boolean shouldDisplayPrompt() {
     ClientState state = stateManager.getCurrentState();
     return state == ClientState.INITIAL_MENU
+        || state == ClientState.AUTH_MENU
+        || state == ClientState.MULTIPLAYER_MENU
+        || state == ClientState.JOIN_GAME_MENU
         || state == ClientState.ADDING_CASE
         || state == ClientState.SELECTING_CASE
-        || state == ClientState.VIEWING_CASE_DETAILS
         || state == ClientState.CHOOSING_HOST_MODE
-        || state == ClientState.CHOOSING_JOIN_MODE
         || state == ClientState.BROWSING_PUBLIC_GAMES
         || state == ClientState.ENTERING_PRIVATE_CODE
+        || state == ClientState.AWAITING_LOGIN_INPUT
+        || state == ClientState.AWAITING_REGISTER_INPUT
         || state == ClientState.HOST_LOBBY_WAITING
         || state == ClientState.GUEST_LOBBY_AWAITING_START
         || state == ClientState.READY_TO_START_GAME_HOST

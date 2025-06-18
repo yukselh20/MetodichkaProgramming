@@ -9,23 +9,16 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Acts as the thread-safe, centralized store for the client's state. It manages the current UI
- * state (`ClientState`) and holds cached data received from the server, serving as the single
- * source of truth for the client.
- */
+// A thread-safe, centralized store for the client's state. It manages the
+// current UI state (ClientState) and holds cached data from the server.
 public class ClientStateManager {
 
   private static final Logger logger = LoggerFactory.getLogger(ClientStateManager.class);
 
-  // Atomic types are used for the core state variables to ensure safe
-  // access and modification from multiple threads (e.g., network and input).
   private final AtomicReference<ClientState> currentState =
       new AtomicReference<>(ClientState.INITIAL_MENU);
   private final AtomicBoolean running = new AtomicBoolean(true);
 
-  // Volatile fields ensure that changes made by the network thread are
-  // immediately visible to the UI and input threads.
   private volatile List<CaseInfoDTO> availableCasesCache = Collections.emptyList();
   private volatile List<PublicGameInfoDTO> publicGamesCache = Collections.emptyList();
   private volatile String selectedCaseTitleCache = null;
@@ -33,6 +26,7 @@ public class ClientStateManager {
   private volatile String gameSessionIdCache = null;
   private volatile String myPlayerIdCache = null;
   private volatile int currentExamQuestionNumberBeingAnswered = 0;
+  private volatile boolean isHost = false;
 
   public ClientState getCurrentState() {
     return currentState.get();
@@ -42,6 +36,15 @@ public class ClientStateManager {
     ClientState oldState = currentState.getAndSet(newState);
     logger.debug("Client state changed from {} to {}", oldState, newState);
     return oldState;
+  }
+
+  public boolean isHost() {
+    return isHost;
+  }
+
+  public void setIsHost(boolean isHost) {
+    logger.debug("Setting client as host: {}", isHost);
+    this.isHost = isHost;
   }
 
   public boolean isRunning() {
@@ -57,8 +60,6 @@ public class ClientStateManager {
     return availableCasesCache;
   }
 
-  // Caches are wrapped in unmodifiable lists to prevent accidental
-  // modification from outside this class, enforcing its role as the sole manager.
   public void setAvailableCasesCache(List<CaseInfoDTO> availableCasesCache) {
     this.availableCasesCache = Collections.unmodifiableList(availableCasesCache);
     logger.debug("Set available cases cache with {} items.", this.availableCasesCache.size());
@@ -82,12 +83,16 @@ public class ClientStateManager {
     this.selectedCaseTitleCache = selectedCaseTitleCache;
   }
 
+  public String getSelectedCaseDescriptionCache() {
+    return selectedCaseDescriptionCache;
+  }
+
   public void setSelectedCaseDescriptionCache(String desc) {
     this.selectedCaseDescriptionCache = desc;
   }
 
-  public String getSelectedCaseDescriptionCache() {
-    return selectedCaseDescriptionCache;
+  public String getMyPlayerIdCache() {
+    return myPlayerIdCache;
   }
 
   public void setMyPlayerIdCache(String myPlayerIdCache) {
@@ -95,8 +100,8 @@ public class ClientStateManager {
     this.myPlayerIdCache = myPlayerIdCache;
   }
 
-  public String getMyPlayerIdCache() {
-    return myPlayerIdCache;
+  public String getGameSessionIdCache() {
+    return gameSessionIdCache;
   }
 
   public void setGameSessionIdCache(String gameSessionIdCache) {
@@ -113,8 +118,8 @@ public class ClientStateManager {
     this.currentExamQuestionNumberBeingAnswered = number;
   }
 
-  // These `clear` methods are important for resetting the client's state
-  // when a player navigates back in the UI, ensuring no stale data is used.
+  // `clear` methods to reset the client's state when a
+  // player navigates back in the UI, ensuring no stale data is used.
   public void clearCaseSelectionCache() {
     logger.debug("Clearing case selection cache.");
     this.selectedCaseTitleCache = null;
@@ -124,5 +129,15 @@ public class ClientStateManager {
   public void clearPublicGamesCache() {
     logger.debug("Clearing public games cache.");
     this.publicGamesCache = Collections.emptyList();
+  }
+
+  public void clearSessionData() {
+    logger.debug("Clearing all session-specific cache data.");
+    this.selectedCaseTitleCache = null;
+    this.selectedCaseDescriptionCache = null;
+    this.publicGamesCache = Collections.emptyList();
+    this.gameSessionIdCache = null;
+    this.myPlayerIdCache = null;
+    this.isHost = false; // Reset the host status
   }
 }

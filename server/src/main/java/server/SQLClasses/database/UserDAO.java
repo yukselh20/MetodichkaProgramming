@@ -10,24 +10,16 @@ import org.slf4j.LoggerFactory;
 import server.SQLClasses.auth.PasswordHasher;
 import server.SQLClasses.model.User;
 
-/**
- * Data Access Object (DAO) for the 'users' table. This class encapsulates all database operations
- * related to user accounts, such as creating new users and finding existing ones.
- */
+// This is the Data Access Object (DAO) for the 'users' table. It encapsulates all
+// database operations related to user accounts.
 public class UserDAO {
 
   private static final Logger logger = LoggerFactory.getLogger(UserDAO.class);
 
-  /**
-   * Finds a user in the database by their username.
-   *
-   * @param username The username to search for.
-   * @return An Optional containing the User object if found, otherwise an empty Optional.
-   */
+  // This finds a user in the database by their username.
   public Optional<User> findUserByUsername(String username) {
     String sql = "SELECT id, username FROM users WHERE username = ?";
 
-    // A try-with-resources block ensures the connection and statement are always closed.
     try (Connection conn = DatabaseManager.getConnection();
         PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -45,14 +37,8 @@ public class UserDAO {
     return Optional.empty();
   }
 
-  /**
-   * Retrieves the stored password hash for a given username. This is kept separate from
-   * findUserByUsername to avoid fetching the hash unless needed.
-   *
-   * @param username The username whose password hash is needed.
-   * @return An Optional containing the password hash, or an empty Optional if the user doesn't
-   *     exist.
-   */
+  // This retrieves the stored password hash for a given username. I kept this separate
+  // from findUserByUsername to avoid fetching the hash unless I absolutely need it.
   public Optional<String> getPasswordHashForUser(String username) {
     String sql = "SELECT password_hash FROM users WHERE username = ?";
     try (Connection conn = DatabaseManager.getConnection();
@@ -70,16 +56,9 @@ public class UserDAO {
     return Optional.empty();
   }
 
-  /**
-   * Adds a new user to the database. First checks if the username already exists.
-   *
-   * @param username The username for the new user.
-   * @param plainPassword The plain-text password for the new user.
-   * @return An Optional containing the newly created User object on success, or an empty Optional
-   *     if the username is already taken.
-   */
+  // This adds a new user to the database, first checking if the username already exists.
   public Optional<User> addUser(String username, String plainPassword) {
-    // First, ensure the username is not already taken.
+    // First, I'll ensure the username is not already taken.
     if (findUserByUsername(username).isPresent()) {
       logger.warn("Attempt to register a user that already exists: '{}'", username);
       return Optional.empty();

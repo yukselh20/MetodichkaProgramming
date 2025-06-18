@@ -14,11 +14,9 @@ import org.slf4j.LoggerFactory;
 import server.extractors.BuildingExtractor;
 import server.extractors.GameObjectExtractor;
 
-/**
- * Manages the authoritative game state and logic for a single, specific GameSession. It is the
- * heart of the game world, holding all rooms, players, and NPCs, and serving as the implementation
- * for the ICommandContext interface.
- */
+// This to manage the authoritative game state and logic for a single GameSession.
+// It's the heart of the game world, holding all rooms, players, and NPCs, and it serves
+// as my implementation for the ICommandContext interface.
 public class GameContextServer implements ICommandContext {
 
   private static final Logger logger = LoggerFactory.getLogger(GameContextServer.class);
@@ -35,7 +33,6 @@ public class GameContextServer implements ICommandContext {
   private Set<String> deducedObjectsSession = new HashSet<>();
   private int deduceCountSession = 0;
   private boolean caseStarted = false;
-  // The context delegates management of NPCs and the Final Exam to specialized manager classes.
   private final NpcManager npcManager;
   private final FinalExamManager examManager;
   private final GameSessionManager sessionManager;
@@ -53,16 +50,12 @@ public class GameContextServer implements ICommandContext {
     return parentSession;
   }
 
-  /**
-   * Initializes or resets the entire game world based on a selected CaseFile. This method is
-   * synchronized to prevent race conditions if multiple players trigger initialization at the same
-   * time.
-   */
+  // This initializes or resets the entire game world based on a CaseFile. I made it
+  // synchronized to prevent race conditions if multiple players trigger it at the same time.
   public synchronized boolean initializeCase(CaseFile caseFile) {
     String sessionId = parentSession.getSessionId();
     logger.info("Context for session [{}] initializing case: {}", sessionId, caseFile.getTitle());
 
-    // Reset all state to ensure a clean slate for the new case.
     this.selectedCase = caseFile;
     this.rooms.clear();
     this.deducedObjectsSession.clear();
@@ -73,14 +66,15 @@ public class GameContextServer implements ICommandContext {
     players.values().forEach(Detective::resetForNewCase);
 
     try {
-      // Loading is delegated to extractor utilities, separating parsing from game logic.
+      // I delegate the actual loading to my extractor utilities to keep parsing separate from game
+      // logic.
       if (!BuildingExtractor.loadBuilding(caseFile, this)) return false;
       GameObjectExtractor.loadObjects(caseFile, this);
       npcManager.initializeNpcs(caseFile, this.rooms);
 
-      // All players are placed in the designated starting room.
+      // Now I place all players in the designated starting room.
       Room playerStartRoom = getRoomByName(caseFile.getStartingRoom());
-      // A fallback ensures the game can start even if the starting room is misconfigured.
+      // My fallback ensures the game can start even if the starting room is misconfigured.
       if (playerStartRoom == null)
         playerStartRoom = this.rooms.values().stream().findFirst().orElse(null);
 
@@ -106,7 +100,16 @@ public class GameContextServer implements ICommandContext {
     }
   }
 
-  // A synchronized wrapper for executing commands to ensure thread safety.
+  // This helper gets a user's display name from their player ID.
+  private String getUsernameFromPlayerId(String playerId) {
+    ClientSession client = sessionManager.getClientSessionByPlayerId(playerId);
+    if (client != null && client.getAuthenticatedUser() != null) {
+      return client.getAuthenticatedUser().getUsername();
+    }
+    return playerId;
+  }
+
+  // This is my synchronized wrapper for executing commands to ensure thread safety.
   public synchronized void handleCommand(Command command) {
     try {
       command.execute(new String[] {}, this);
@@ -126,7 +129,7 @@ public class GameContextServer implements ICommandContext {
     if (!players.containsKey(playerId)) {
       Detective newDetective = new Detective(playerId);
       players.put(playerId, newDetective);
-      // If a player joins after a case is selected, they are placed in the correct starting room.
+      // If a player joins after I've selected a case, I'll place them in the correct starting room.
       if (selectedCase != null && selectedCase.getStartingRoom() != null) {
         Room startRoom = getRoomByName(selectedCase.getStartingRoom());
         if (startRoom == null && !rooms.isEmpty()) startRoom = rooms.values().iterator().next();
@@ -145,10 +148,11 @@ public class GameContextServer implements ICommandContext {
 
   @Override
   public synchronized void addEntryToJournal(String entry, String playerId) {
-    JournalEntryDTO newEntry = new JournalEntryDTO(entry, playerId, LocalDateTime.now());
+    String username = getUsernameFromPlayerId(playerId);
+    JournalEntryDTO newEntry = new JournalEntryDTO(entry, username, LocalDateTime.now());
     boolean added = journal.addEntry(newEntry.getFormattedEntry());
     if (added) {
-      // The DTO is broadcast to ensure all clients receive the structured journal update.
+      // The DTO is broadcast so all clients get the structured journal update.
       parentSession.broadcastToSession(newEntry, null);
       autoSaveGameState();
     }
@@ -197,8 +201,8 @@ public class GameContextServer implements ICommandContext {
   @Override
   public synchronized void handlePlayerMovement(String playerId, Room oldRoom, Room newRoom) {
     if (oldRoom != null) {
-      // Notifying the NpcManager of player movement allows NPCs to react, for example, by moving
-      // into an empty room.
+      // Notifying the NpcManager of player movement allows my NPCs to react,
+      // for example, by moving into an empty room.
       npcManager.triggerNpcMovementChecks(oldRoom, this.players);
     }
   }
@@ -227,7 +231,7 @@ public class GameContextServer implements ICommandContext {
       return;
     }
 
-    // Differentiates actions based on the player's role (Host vs. Guest).
+    // Here I differentiate actions based on the player's role (Host vs. Guest).
     if (parentSession.isHost(initiatingPlayerId)) {
       logger.info(
           "Session [{}]: Case '{}' officially started by HOST {}",
@@ -239,13 +243,15 @@ public class GameContextServer implements ICommandContext {
     } else {
       String hostId = parentSession.getHostPlayerId();
       if (hostId != null) {
+        String guestUsername = getUsernameFromPlayerId(initiatingPlayerId);
         sendResponseToPlayer(
             hostId,
-            new TextMessage(
-                initiatingPlayerId + " requests you to start the case. Type 'start case'."));
+            new TextMessage(guestUsername + " requests you to start the case. Type 'start case'."));
+
+        String hostUsername = getUsernameFromPlayerId(hostId);
         sendResponseToPlayer(
             initiatingPlayerId,
-            new TextMessage("Request sent to the host (" + hostId + ") to start the case."));
+            new TextMessage("Request sent to the host (" + hostUsername + ") to start the case."));
       } else {
         sendResponseToPlayer(
             initiatingPlayerId,
@@ -254,7 +260,8 @@ public class GameContextServer implements ICommandContext {
     }
   }
 
-  // Sends the initial case details to all players, marking the official start of the investigation.
+  // This sends the initial case details to all players, marking the official start of the
+  // investigation.
   private void broadcastInitialCaseDetails() {
     if (!this.caseStarted || this.selectedCase == null || this.taskList == null) {
       logger.error(
@@ -266,7 +273,7 @@ public class GameContextServer implements ICommandContext {
     List<String> playerIdsInSession = parentSession.getPlayerIds();
     if (playerIdsInSession.isEmpty()) return;
 
-    // The initial broadcast consists of several pieces of information to set the scene.
+    // My initial broadcast consists of several pieces of information to set the scene.
     TextMessage introMessage =
         new TextMessage(
             "\n--- Case Introduction ---\n"
@@ -302,13 +309,15 @@ public class GameContextServer implements ICommandContext {
       }
       sendResponseToPlayer(targetPlayerId, helpMessage);
     }
-    // After broadcasting, the parent session's state is officially changed to ACTIVE.
+    // After broadcasting, I officially change the parent session's state to ACTIVE.
     parentSession.setSessionState(GameSession.SessionState.ACTIVE);
   }
 
   @Override
   public synchronized void processFinalExamAttempt(String initiatingPlayerId) {
-    examManager.processFinalExamAttempt(initiatingPlayerId);
+    String guestUsername = getUsernameFromPlayerId(initiatingPlayerId);
+    String hostUsername = getUsernameFromPlayerId(parentSession.getHostPlayerId());
+    examManager.processFinalExamAttempt(initiatingPlayerId, guestUsername, hostUsername);
   }
 
   @Override
@@ -328,7 +337,7 @@ public class GameContextServer implements ICommandContext {
     return npcManager.findSuspect(name);
   }
 
-  // A convenience method for case-insensitive room lookups.
+  // This is a convenience method I wrote for case-insensitive room lookups.
   public Room getRoomByName(String name) {
     if (name == null) return null;
     for (Map.Entry<String, Room> entry : rooms.entrySet()) {
@@ -347,7 +356,7 @@ public class GameContextServer implements ICommandContext {
 
   @Override
   public List<JournalEntryDTO> getJournalEntries() {
-    // This method converts the internal list of simple strings into a list of
+    // This method converts my internal list of simple strings into a list of
     // structured DTOs for network transmission.
     return journal.getEntries().stream()
         .map(
@@ -366,7 +375,7 @@ public class GameContextServer implements ICommandContext {
                         .withSecond(Integer.parseInt(timestampStr.substring(6, 8)));
                 return new JournalEntryDTO(textPart, playerIdPart, entryTime);
               } catch (Exception e) {
-                // A fallback ensures that a malformed journal entry doesn't crash the server.
+                // My fallback ensures a malformed journal entry doesn't crash the server.
                 return new JournalEntryDTO(entryString, "System", LocalDateTime.now());
               }
             })
@@ -414,9 +423,9 @@ public class GameContextServer implements ICommandContext {
     players.forEach(
         (pid, det) -> {
           if (room.equals(det.getCurrentRoom())) {
-            // The name "You" is used for the requesting player to make the description more
-            // personal.
-            occupantNames.add(pid.equals(requestingPlayerId) ? "You (" + pid + ")" : pid);
+            String username = getUsernameFromPlayerId(pid);
+            // I'll use the username for display, but show "You" for the requesting player.
+            occupantNames.add(pid.equals(requestingPlayerId) ? "You (" + username + ")" : username);
           }
         });
     npcManager.getSuspects().stream()
@@ -436,10 +445,8 @@ public class GameContextServer implements ICommandContext {
         room.getName(), room.getDescription(), objectNames, occupantNames, exitMap);
   }
 
-  /**
-   * Gathers all the necessary data from the current game state and packages it into a GameStateData
-   * DTO for persistence.
-   */
+  // This gathers all necessary data from the current game state and packages
+  // it into a GameStateData DTO for persistence.
   public GameStateData getCurrentGameStateData(String sessionId, List<String> currentPlayerIds) {
     Map<String, String> playerLocs =
         players.entrySet().stream()
@@ -484,10 +491,8 @@ public class GameContextServer implements ICommandContext {
         caseStarted);
   }
 
-  /**
-   * Rehydrates the game state from a loaded GameStateData object. This method re-initializes the
-   * case to its base state from the original JSON file and then layers the saved progress on top.
-   */
+  // This rehydrates the game state from a loaded GameStateData object. I re-initialize
+  // the case to its base state from the original JSON and then layer the saved progress on top.
   public boolean applyLoadedState(GameStateData loadedData) {
     logger.info("Applying loaded state to context for session [{}]", parentSession.getSessionId());
     try {
@@ -557,27 +562,22 @@ public class GameContextServer implements ICommandContext {
     }
   }
 
-  // A simple wrapper to send responses via the parent GameSession.
+  // This is a simple wrapper to send responses via the parent GameSession.
   @Override
   public void sendResponseToPlayer(String playerId, Serializable message) {
     parentSession.sendMessageToPlayer(playerId, message);
   }
 
-  /**
-   * Automatically saves the current state of the game to the database. This is triggered by key
-   * events like adding a journal entry.
-   */
+  // This automatically saves the current game state to the database. It gets
+  // triggered by key events like adding a journal entry.
   private void autoSaveGameState() {
-    // Find the host player's ClientSession to get their user ID.
     ClientSession hostClient =
         sessionManager.getClientSessionByPlayerId(parentSession.getHostPlayerId());
     if (hostClient == null || hostClient.getAuthenticatedUser() == null) {
-      // Cannot save if the host is not found or not logged in.
       logger.warn("Auto-save failed: Host player not found or not authenticated.");
       return;
     }
     if (selectedCase == null) {
-      // Cannot save if no case is active.
       logger.warn("Auto-save failed: No case is active in the session.");
       return;
     }
@@ -585,11 +585,9 @@ public class GameContextServer implements ICommandContext {
     int ownerId = hostClient.getAuthenticatedUser().getId();
     String caseTitle = selectedCase.getTitle();
 
-    // Get the current state data.
     GameStateData stateData =
         this.getCurrentGameStateData(parentSession.getSessionId(), parentSession.getPlayerIds());
 
-    // Use the DAO to save the state.
     sessionManager.getGameSessionDAO().saveOrUpdateGameState(ownerId, caseTitle, stateData);
     logger.info("Auto-saved game state for user {} and case '{}'.", ownerId, caseTitle);
   }

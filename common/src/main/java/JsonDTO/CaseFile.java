@@ -4,15 +4,13 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 import java.util.Map;
 
-/**
- * A Plain Old Java Object (POJO) that directly maps to the structure of a case JSON file. The
- * Jackson library uses this class to deserialize the entire case data into a single, manageable
- * object. The nested static classes provide structure for the complex data within the file.
- */
-// This annotation is crucial for forward compatibility. It tells Jackson to
-// ignore any properties in the JSON file that don't have a corresponding
-// field in this class, preventing parsing errors if the JSON schema evolves.
+// This is my Plain Old Java Object (POJO) that directly maps to the structure of a case JSON file.
+// I use it with the Jackson library to deserialize the entire case data into a single object.
+// The nested static classes provide structure for the complex data within the file.
 @JsonIgnoreProperties(ignoreUnknown = true)
+// This annotation is crucial for forward compatibility. It tells Jackson to ignore any
+// properties in the JSON file that don't have a corresponding field in this class,
+// which prevents parsing errors if I evolve the JSON schema.
 public class CaseFile {
   private String title;
   private String invitation;
@@ -24,7 +22,6 @@ public class CaseFile {
   private List<String> tasks;
   private List<String> watsonHints;
 
-  // --- Getters ---
   public String getTitle() {
     return title;
   }
@@ -61,9 +58,8 @@ public class CaseFile {
     return watsonHints;
   }
 
-  // --- Setters ---
-  // Public setters are required for the Jackson library to populate the fields
-  // of this object during the deserialization process from the JSON file.
+  // I need these public setters for the Jackson library to populate the fields
+  // during deserialization from the JSON file.
   public void setTitle(String title) {
     this.title = title;
   }
@@ -100,13 +96,12 @@ public class CaseFile {
     this.watsonHints = watsonHints;
   }
 
-  /** Nested static class representing the data for a single suspect in the JSON file. */
+  // Nested static class for suspect data in the JSON file.
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class SuspectData {
     private String name;
     private String statement;
     private String clue;
-    // This field provides a way to constrain NPC movement to specific rooms if needed.
     private List<String> allowedRooms;
 
     public String getName() {
@@ -142,12 +137,11 @@ public class CaseFile {
     }
   }
 
-  /** Nested static class representing the data for a single room in the JSON file. */
+  // Nested static class for room data in the JSON file.
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class RoomData {
     private String name;
     private String description;
-    // The neighbors map links directions (e.g., "north") to the names of other rooms.
     private Map<String, String> neighbors;
     private List<GameObjectData> objects;
 
@@ -184,7 +178,7 @@ public class CaseFile {
     }
   }
 
-  /** Nested static class representing the data for a single game object in the JSON file. */
+  // Nested static class for game object data in the JSON file.
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class GameObjectData {
     private String name;
@@ -225,7 +219,7 @@ public class CaseFile {
     }
   }
 
-  /** Nested static class representing a single question-answer pair for the final exam. */
+  // Nested static class for a single question-answer pair for the final exam.
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class ExamQuestion {
     private String question;

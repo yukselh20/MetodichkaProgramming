@@ -6,10 +6,8 @@ import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * A command object representing a client's request to host a new game. It contains the necessary
- * data for the server to set up a new session.
- */
+// this command object to represent a client's request to host a new game.
+// It contains the necessary data for the server to set up a new session.
 public class HostGameCommand extends BaseCommand implements Serializable {
   private static final Logger logger = LoggerFactory.getLogger(HostGameCommand.class);
   private static final long serialVersionUID = 114L;
@@ -18,7 +16,6 @@ public class HostGameCommand extends BaseCommand implements Serializable {
   private final boolean isPublic;
 
   public HostGameCommand(String caseTitle, boolean isPublic) {
-    // This command can be executed from the lobby, before a case has started.
     super(false);
     this.caseTitle = Objects.requireNonNull(caseTitle, "Case title cannot be null");
     if (caseTitle.isBlank()) throw new IllegalArgumentException("Case title cannot be blank.");
@@ -35,11 +32,10 @@ public class HostGameCommand extends BaseCommand implements Serializable {
 
   @Override
   protected void executeCommand(String[] args_unused, ICommandContext context) {
-    // This command should be intercepted and handled by the GameSessionManager
-    // before it ever reaches a specific GameContext. This block acts as a
-    // safety net to catch logical errors in message routing.
+    // This command should be handled by the GameSessionManager before it reaches a
+    // specific GameContext. This block is a safety net to catch message routing errors.
     logger.warn(
-        "HostGameCommand reached GameContextServer for player {}. This indicates a message routing error and should be handled by GameSessionManager.",
+        "HostGameCommand reached GameContextServer for player {}. This indicates a routing error.",
         getPlayerId());
     context.sendResponseToPlayer(
         getPlayerId(),

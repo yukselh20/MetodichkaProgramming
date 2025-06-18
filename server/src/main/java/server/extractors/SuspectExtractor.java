@@ -7,18 +7,12 @@ import java.util.*;
 import server.GameContextServer;
 import server.GameSession;
 
-/**
- * A utility class for parsing suspect data from a CaseFile, creating Suspect objects, and placing
- * them into the game world.
- */
+// This utility class is used to parse suspect data from a CaseFile, create Suspect objects, and
+// place them into the game world.
 public class SuspectExtractor {
 
   private SuspectExtractor() {}
 
-  /**
-   * A custom exception to signal that suspects cannot be placed because no valid rooms have been
-   * loaded into the context.
-   */
   public static class NoValidRoomsException extends RuntimeException {
     public NoValidRoomsException(String message) {
       super(message);
@@ -53,7 +47,7 @@ public class SuspectExtractor {
       String suspectName = suspectData.getName();
       String suspectNameLower = suspectName.toLowerCase();
 
-      // A set is used to ensure that every suspect has a unique name.
+      // I use a set to ensure that every suspect has a unique name.
       if (!suspectNamesLower.add(suspectNameLower)) {
         System.err.println(
             "Session [" + sessionId + "]: Duplicate suspect '" + suspectName + "'. Skipping.");
@@ -66,7 +60,7 @@ public class SuspectExtractor {
               suspectData.getStatement() != null ? suspectData.getStatement() : "No comment.",
               suspectData.getClue());
       try {
-        // Each suspect is placed in a random starting room.
+        // I place each suspect in a random starting room.
         Room startingRoom = assignRandomStartingRoom(suspect, context, sessionId);
         suspect.setCurrentRoom(startingRoom);
         context.addSuspect(suspect);
@@ -78,8 +72,7 @@ public class SuspectExtractor {
                 + suspect.getName()
                 + "': "
                 + e.getMessage());
-        // If a suspect cannot be placed (e.g., no rooms available), it's a
-        // fatal error for the case loading process.
+        // If a suspect can't be placed, it's a fatal error for the case loading process.
         return false;
       }
     }

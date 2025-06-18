@@ -1,6 +1,5 @@
 package server;
 
-// Import the full CaseFile DTO
 import common.Commands.*;
 import common.NetworkConstants;
 import common.dto.*;
@@ -16,20 +15,15 @@ import server.SQLClasses.database.GameSessionDAO;
 import server.SQLClasses.database.UserDAO;
 import server.SQLClasses.model.User;
 
-/**
- * The master manager for all game sessions. It handles the client lobby, matchmaking, creation and
- * joining of games, and routing initial messages before a client is assigned to a specific
- * GameSession.
- */
+// This as the master manager for all game sessions. It handles the client lobby,
+// matchmaking, creation and joining of games, and routing initial messages before a client
+// is assigned to a specific GameSession.
 public class GameSessionManager {
 
   private static final Logger logger = LoggerFactory.getLogger(GameSessionManager.class);
 
   private final GameServer gameServer;
   private final String casesDir;
-
-  // These concurrent collections are essential for managing a thread-safe state
-  // across multiple clients and game sessions.
   private final Map<String, CaseInfoDTO> uniqueAvailableCases = new ConcurrentHashMap<>();
   private final Map<String, GameSession> activeSessions = new ConcurrentHashMap<>();
   private final Queue<ClientSession> lobby = new ConcurrentLinkedQueue<>();
@@ -56,10 +50,8 @@ public class GameSessionManager {
         newClient.getChannel(), new TextMessage("Welcome! Please log in or register to continue."));
   }
 
-  /**
-   * Routes an incoming message from a client. If the client is in a game, the message is passed to
-   * their GameSession. If they are in the lobby, it's handled by the lobby message processor.
-   */
+  // This is my main router for incoming messages from a client. If the client is in a game,
+  // I pass the message to their GameSession. If they are in the lobby, I handle it here.
   public void routeMessage(ClientSession senderSession, Object message) {
     String gameSessionId = senderSession.getGameSessionId();
     if (gameSessionId != null) {
@@ -82,7 +74,16 @@ public class GameSessionManager {
     }
   }
 
-  // A synchronized router for all messages from clients who are not yet in an active game.
+  private String getUsernameFromPlayerId(String playerId) {
+    ClientSession client = getClientSessionByPlayerId(playerId);
+    if (client != null && client.getAuthenticatedUser() != null) {
+      return client.getAuthenticatedUser().getUsername();
+    }
+    // Fallback to the player ID if the user isn't found or authenticated.
+    return playerId;
+  }
+
+  // This is my synchronized router for all messages from clients who are not yet in an active game.
   private synchronized void handleLobbyOrSetupMessage(ClientSession senderSession, Object message) {
     logger.debug("SessionManager: Received message of type {}", message.getClass().getSimpleName());
 
@@ -97,7 +98,6 @@ public class GameSessionManager {
       return;
     }
 
-    // --- Lobby and Game Setup Commands (require login) ---
     // Check for authentication for all subsequent lobby actions.
     if (senderSession.getAuthenticatedUser() == null) {
       gameServer.queueWrite(
@@ -137,10 +137,8 @@ public class GameSessionManager {
     }
   }
 
-  /**
-   * Aggregates case information from all connected clients into a single, unique list of available
-   * cases on the server.
-   */
+  // This aggregates case information from all connected clients into a single, unique list of
+  // available cases.
   private synchronized void registerClientCases(ClientCaseListDTO caseListDTO) {
     if (caseListDTO == null || caseListDTO.getCases() == null) {
       return;
@@ -149,7 +147,7 @@ public class GameSessionManager {
     boolean changed = false;
     for (CaseInfoDTO clientCase : caseListDTO.getCases()) {
       if (clientCase.getTitle() != null && !clientCase.getTitle().isBlank()) {
-        // Using a lower-case key allows for case-insensitive matching of case titles.
+        // I use a lower-case key for case-insensitive matching of case titles.
         String key = clientCase.getTitle().toLowerCase();
         if (!uniqueAvailableCases.containsKey(key)) {
           uniqueAvailableCases.put(key, clientCase);
@@ -177,7 +175,7 @@ public class GameSessionManager {
     gameServer.queueWrite(client.getChannel(), new AvailableCasesDTO(sortedCases));
   }
 
-  /** Handles a registration request from a client. */
+  // This is how I handle a registration request from a client.
   private void handleRegister(ClientSession senderSession, String username, String password) {
     if (senderSession.getAuthenticatedUser() != null) {
       gameServer.queueWrite(
@@ -213,7 +211,7 @@ public class GameSessionManager {
     }
   }
 
-  /** Handles a login request from a client, enforcing a single-session policy. */
+  // This handles a login request from a client, enforcing my single-session policy.
   private void handleLogin(ClientSession senderSession, String username, String password) {
     if (senderSession.getAuthenticatedUser() != null) {
       gameServer.queueWrite(
@@ -261,9 +259,6 @@ public class GameSessionManager {
             senderSession.getPlayerId(),
             user.getUsername(),
             user.getId());
-        gameServer.queueWrite(
-            senderSession.getChannel(),
-            new TextMessage("CMD_REQUEST_CASES")); // A special, non-visible command
 
       } else {
         gameServer.queueWrite(
@@ -275,10 +270,8 @@ public class GameSessionManager {
     }
   }
 
-  /**
-   * The core logic for handling a host request. It validates the request, creates a new
-   * GameSession, and sets up the lobby.
-   */
+  // This is my core logic for handling a host request. It validates the request,
+  // creates a new GameSession, and sets up the lobby.
   private synchronized void handleHostRequest(
       ClientSession hostClient, String caseTitle, boolean isPublic) {
     if (hostClient.getAuthenticatedUser() == null) {
@@ -337,7 +330,7 @@ public class GameSessionManager {
         caseTitle);
   }
 
-  // Generates a unique 4-digit code for private games.
+  // I created this to generate a unique 4-digit code for private games.
   private synchronized String generatePrivateCode() {
     String code;
     do {
@@ -351,11 +344,13 @@ public class GameSessionManager {
         pendingPublicGames.values().stream()
             .filter(s -> s.getPlayerCount() < NetworkConstants.MAX_PLAYERS_PER_GAME)
             .map(
-                session ->
-                    new PublicGameInfoDTO(
-                        session.getHostPlayerId(),
-                        session.getSelectedCaseInfo().getTitle(),
-                        session.getSessionId()))
+                session -> {
+                  String hostUsername = getUsernameFromPlayerId(session.getHostPlayerId());
+                  return new PublicGameInfoDTO(
+                      hostUsername,
+                      session.getSelectedCaseInfo().getTitle(),
+                      session.getSessionId());
+                })
             .sorted(
                 Comparator.comparing(
                     PublicGameInfoDTO::getCaseTitle, String.CASE_INSENSITIVE_ORDER))
@@ -392,10 +387,13 @@ public class GameSessionManager {
               true,
               "Joined public game '" + targetSession.getSelectedCaseInfo().getTitle() + "'!",
               targetSessionId));
+      String joiningUsername = getUsernameFromPlayerId(joiningClient.getPlayerId());
+
+      // I'll notify the existing players (the host) that a new player has joined, using their
+      // username.
       targetSession.broadcastToSession(
           new LobbyUpdateDTO(
-              joiningClient.getPlayerId() + " joined! Starting game...",
-              targetSession.getPlayerIds()),
+              joiningUsername + " joined! Starting game...", targetSession.getPlayerIds()),
           joiningClient.getPlayerId());
       targetSession.initializeSession();
       lobby.remove(joiningClient);
@@ -437,10 +435,12 @@ public class GameSessionManager {
                 true,
                 "Joined private game '" + targetSession.getSelectedCaseInfo().getTitle() + "'!",
                 targetSessionId));
+        String joiningUsername = getUsernameFromPlayerId(joiningClient.getPlayerId());
+
+        // I'll notify the existing players (the host) that a new player has joined.
         targetSession.broadcastToSession(
             new LobbyUpdateDTO(
-                joiningClient.getPlayerId() + " joined! Starting game...",
-                targetSession.getPlayerIds()),
+                joiningUsername + " joined! Starting game...", targetSession.getPlayerIds()),
             joiningClient.getPlayerId());
         targetSession.initializeSession();
         lobby.remove(joiningClient);
@@ -456,9 +456,9 @@ public class GameSessionManager {
     }
   }
 
-  /** Handles all logic for a client disconnecting, including logging them out. */
+  // This handles all logic for a client disconnecting, including logging them out.
   public synchronized void handleClientDisconnect(ClientSession disconnectedClient) {
-    // Log the user out from our centralized active user map.
+    // I log the user out from my centralized active user map.
     User authenticatedUser = disconnectedClient.getAuthenticatedUser();
     if (authenticatedUser != null) {
       loggedInUserToPlayerId.remove(authenticatedUser.getId());

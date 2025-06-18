@@ -12,11 +12,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.SQLClasses.model.User;
 
-/**
- * Represents a single connected client on the server. This class holds the client's network
- * channel, unique ID, and session-specific state, acting as a stateful wrapper around the low-level
- * network connection.
- */
+// This class to represent a single connected client on the server. It holds the
+// client's network channel, unique ID, and session-specific state, acting as a stateful
+// wrapper around the low-level network connection.
 public class ClientSession {
   private static final Logger logger = LoggerFactory.getLogger(ClientSession.class);
 
@@ -25,11 +23,7 @@ public class ClientSession {
   private String gameSessionId;
   private List<CaseInfoDTO> localCases = Collections.emptyList();
   private User authenticatedUser = null;
-
-  // Each client has their own queue for outgoing messages to ensure
-  // thread-safe writes from multiple server threads.
   private final Queue<ByteBuffer> writeQueue = new ConcurrentLinkedQueue<>();
-  // A dedicated buffer for reading data from this specific client's channel.
   private final ByteBuffer readBuffer = ByteBuffer.allocate(NetworkConstants.DEFAULT_BUFFER_SIZE);
 
   public ClientSession(SocketChannel channel, String playerId) {

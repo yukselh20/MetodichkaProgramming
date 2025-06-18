@@ -5,18 +5,15 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * The main entry point for the server application. Its sole responsibility is to parse
- * configuration, initialize the GameServer, and start it.
- */
+// This is the main entry point for my server application. Its sole responsibility is
+// to parse configuration, initialize the GameServer, and start it.
 public class ServerMain {
 
-  // Create a static logger instance for this class
   private static final Logger logger = LoggerFactory.getLogger(ServerMain.class);
 
   public static void main(String[] args) {
     int port = NetworkConstants.DEFAULT_PORT;
-    // The cases directory can be configured via an environment variable or a command-line argument.
+    // I can configure the cases directory via an environment variable or a command-line argument.
     String casesDir = System.getenv().getOrDefault("CASES_DIR", "cases");
 
     if (args.length > 0) {
@@ -35,9 +32,8 @@ public class ServerMain {
       logger.info("Server init: Port={}, CasesDir='{}'", port, casesDir);
       server = new GameServer(port, casesDir);
 
-      // A shutdown hook is registered with the JVM to ensure that the server's
-      // shutdown logic (like saving games) is called even if the server is
-      // terminated externally (e.g., with Ctrl+C).
+      // I register a shutdown hook with the JVM to ensure my server's shutdown logic
+      // is called, even if the server is terminated externally (e.g., with Ctrl+C).
       final GameServer finalServer = server;
       Runtime.getRuntime()
           .addShutdownHook(

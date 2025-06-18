@@ -3,10 +3,8 @@ package common.dto;
 import java.io.Serializable;
 import java.util.Objects;
 
-/**
- * A simple DTO for sending generic, one-off text messages from the server to the client for
- * display, such as error messages or status updates.
- */
+// A simple DTO for sending generic text messages from the server to the client,
+// like error messages or status updates.
 public class TextMessage implements Serializable {
   private static final long serialVersionUID = 1L;
 

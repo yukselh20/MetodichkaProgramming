@@ -7,10 +7,8 @@ import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Manages the connection to the PostgreSQL database. This class provides a centralized method for
- * obtaining a database connection, configured for the university's 'studs' database server.
- */
+// This to manage the connection to the PostgreSQL database. It provides a
+// centralized method for obtaining a connection.
 public class DatabaseManager {
 
   private static final Logger logger = LoggerFactory.getLogger(DatabaseManager.class);
@@ -30,16 +28,11 @@ public class DatabaseManager {
           System.getenv("DB_PASSWORD"),
           "FATAL: Database password not set. Please set the DB_PASSWORD environment variable.");
 
-  /** Private constructor to prevent instantiation of this utility class. */
+  // Private constructor to prevent instantiation.
   private DatabaseManager() {}
 
-  /**
-   * Establishes and returns a new connection to the database using the loaded configuration. The
-   * calling method is responsible for closing this connection.
-   *
-   * @return A new Connection object to the database.
-   * @throws SQLException if a database access error occurs (e.g., wrong password, server down).
-   */
+  // This establishes and returns a new connection to the database. The calling
+  // method is responsible for closing this connection.
   public static Connection getConnection() throws SQLException {
     try {
       Class.forName("org.postgresql.Driver");

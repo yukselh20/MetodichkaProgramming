@@ -13,10 +13,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 
-/**
- * A server-side utility class responsible for discovering and loading all valid case files from a
- * specified directory on disk.
- */
+// This is the server-side utility class for discovering and loading all valid case files from a
+// specified directory.
 public class CaseLoader {
 
   private static final ObjectMapper mapper =
@@ -33,7 +31,7 @@ public class CaseLoader {
 
     List<CaseFile> cases = new ArrayList<>();
 
-    // Using a try-with-resources block ensures the file stream is properly closed.
+    // I use a try-with-resources block here to ensure the file stream is properly closed.
     try (Stream<Path> stream = Files.list(dir)) {
       stream
           .filter(path -> !Files.isDirectory(path))
@@ -43,8 +41,7 @@ public class CaseLoader {
                 File file = filePath.toFile();
                 try {
                   CaseFile caseFile = mapper.readValue(file, CaseFile.class);
-                  // A case file is only considered valid if it has both a title and at least one
-                  // room.
+                  // I only consider a case file valid if it has both a title and at least one room.
                   if (caseFile.getTitle() != null
                       && !caseFile.getTitle().isBlank()
                       && caseFile.getRooms() != null

@@ -2,10 +2,8 @@ package Core;
 
 import java.util.Objects;
 
-/**
- * Represents any interactable object or feature within a room. Each object has a name, a general
- * description, and potentially more detailed text for 'examine' and 'deduce' actions.
- */
+// This class represents any interactable object or feature within a room. Each object
+// has a name, description, and potentially more detailed 'examine' and 'deduce' text.
 public class GameObject {
   private final String name;
   private final String description;
@@ -20,8 +18,8 @@ public class GameObject {
         Objects.requireNonNull(
             description, "GameObject description for '" + name + "' cannot be null.");
 
-    // If specific 'examine' or 'deduce' text isn't provided, the object falls
-    // back to a default value. This makes the case JSON files more flexible.
+    // If specific 'examine' or 'deduce' text isn't provided, I fall back to a default value.
+    // This makes my case JSON files more flexible.
     this.examineText = (examineText != null && !examineText.isBlank()) ? examineText : description;
     this.deduceText =
         (deduceText != null && !deduceText.isBlank())

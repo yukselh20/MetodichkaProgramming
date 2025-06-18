@@ -7,17 +7,14 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * A command for viewing journal entries. It supports both listing all entries and searching for
- * entries containing a specific keyword.
- */
+// This is my command for viewing journal entries. It supports both listing all entries
+// and searching for entries containing a specific keyword.
 public class JournalCommand extends BaseCommand implements Serializable {
   private static final long serialVersionUID = 107L;
-  // A null keyword signifies that the user wants to list all journal entries.
+  // A null keyword here signifies that the user wants to list all of the journal.
   private final String searchKeyword;
 
   public JournalCommand(String searchKeyword) {
-    // The journal is only accessible after the case has begun.
     super(true);
     this.searchKeyword = searchKeyword;
   }
@@ -25,12 +22,10 @@ public class JournalCommand extends BaseCommand implements Serializable {
   @Override
   public void executeCommand(String[] args_unused, ICommandContext context) {
     String playerId = getPlayerId();
-    // The context provides a structured list of journal entries as DTOs,
-    // abstracting the underlying storage from the command.
     List<JournalEntryDTO> allEntries = context.getJournalEntries();
     List<JournalEntryDTO> entriesToSend;
 
-    // If a search keyword is provided, filter the list. Otherwise, use the full list.
+    // If a search keyword is provided, it filters the list. Otherwise, use the full list.
     if (searchKeyword != null && !searchKeyword.trim().isEmpty()) {
       String lowerKeyword = searchKeyword.toLowerCase();
       entriesToSend =
@@ -41,8 +36,6 @@ public class JournalCommand extends BaseCommand implements Serializable {
       entriesToSend = allEntries;
     }
 
-    // The response text is built dynamically based on whether it's a search
-    // and whether any entries were found.
     StringBuilder responseText = new StringBuilder();
     if (searchKeyword != null && !searchKeyword.trim().isEmpty()) {
       responseText

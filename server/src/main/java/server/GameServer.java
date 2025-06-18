@@ -14,18 +14,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * The main server class that handles all low-level network I/O and client management. It uses a
- * single thread with a Selector (Java NIO) to manage many client connections efficiently without
- * needing a thread per client.
- */
+// This is the main server class that handles all low-level network I/O and client management.
+// It uses a single thread with a Selector (Java NIO) to manage many client connections
+// efficiently without needing a thread per client.
 public class GameServer {
   private final int port;
   private final Selector selector;
   private final ServerSocketChannel serverSocketChannel;
   private volatile boolean running = true;
 
-  // A thread-safe map to track all connected clients by their network channel.
+  // I use a thread-safe map to track all connected clients by their network channel.
   private final Map<SocketChannel, ClientSession> clients = new ConcurrentHashMap<>();
   private final GameSessionManager gameSessionManager;
 
@@ -40,16 +38,14 @@ public class GameServer {
     serverSocketChannel.bind(new InetSocketAddress(port));
     serverSocketChannel.configureBlocking(false);
     serverSocketChannel.setOption(StandardSocketOptions.SO_REUSEADDR, true);
-    // The server registers interest in OP_ACCEPT to be notified of new client connections.
+    // I register interest in OP_ACCEPT to be notified of new client connections.
     serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
 
     logger.info("GameServer started on port {}", port);
   }
 
-  /**
-   * The main server event loop. It waits for network events (like new connections or incoming data)
-   * and dispatches them to handler methods.
-   */
+  // This is the main server event loop. It waits for network events and dispatches
+  // them to handler methods.
   public void start() {
     logger.info("Server event loop started.");
     try {
@@ -97,7 +93,7 @@ public class GameServer {
     }
   }
 
-  // Accepts a new client connection and sets up a ClientSession for it.
+  // This accepts a new client connection and sets up a ClientSession for it.
   private void handleAccept(SelectionKey key) throws IOException {
     logger.debug("==> handleAccept() method has been entered.");
     ServerSocketChannel serverChannel = (ServerSocketChannel) key.channel();
@@ -117,7 +113,7 @@ public class GameServer {
     clients.put(clientChannel, session);
 
     try {
-      // The new client channel is registered with the selector, with interest in read operations.
+      // I register the new client channel with the selector, with interest in read operations.
       clientChannel.register(selector, SelectionKey.OP_READ);
       logger.info("Client connected: {}, ID: {}", getClientInfo(clientChannel), playerId);
       gameSessionManager.handleNewClientConnection(session);
@@ -127,7 +123,7 @@ public class GameServer {
     }
   }
 
-  // Handles reading incoming data from a client channel.
+  // This handles reading incoming data from a client channel.
   private void handleRead(SelectionKey key) throws IOException {
     SocketChannel clientChannel = (SocketChannel) key.channel();
     ClientSession session = clients.get(clientChannel);
@@ -149,7 +145,7 @@ public class GameServer {
     if (bytesRead == -1)
       throw new IOException("Client " + session.getPlayerId() + " closed connection.");
 
-    // This block processes the received bytes, deframing messages based on their length prefix.
+    // This block processes received bytes, de-framing messages based on their length prefix.
     if (bytesRead > 0) {
       readBuffer.flip();
       while (readBuffer.remaining() >= NetworkConstants.MESSAGE_LENGTH_HEADER_SIZE) {
@@ -183,7 +179,7 @@ public class GameServer {
     }
   }
 
-  // Handles writing data from a client's outgoing queue to their channel.
+  // This handles writing data from a client's outgoing queue to their channel.
   private void handleWrite(SelectionKey key) throws IOException {
     SocketChannel clientChannel = (SocketChannel) key.channel();
     ClientSession session = clients.get(clientChannel);
@@ -204,14 +200,12 @@ public class GameServer {
       if (!buffer.hasRemaining()) writeQueue.poll();
       else return; // Message was only partially written.
     }
-    // Once the queue is empty, we are no longer interested in write events for this key.
+    // Once the queue is empty, I'm no longer interested in write events for this key.
     if (writeQueue.isEmpty() && key.isValid()) key.interestOps(SelectionKey.OP_READ);
   }
 
-  /**
-   * Queues a message to be sent to a specific client. This method is thread-safe and can be called
-   * from any part of the server logic.
-   */
+  // This queues a message to be sent to a specific client. This method is thread-safe
+  // and can be called from any part of my server logic.
   public void queueWrite(SocketChannel channel, Serializable message) {
     ClientSession session = clients.get(channel);
     if (session == null || !channel.isOpen()) return;
@@ -219,7 +213,7 @@ public class GameServer {
       ByteBuffer buffer = SerializationUtils.serializeWithFraming(message);
       session.getWriteQueue().offer(buffer);
       SelectionKey key = channel.keyFor(selector);
-      // If we aren't already registered for write events, we add OP_WRITE interest
+      // If I'm not already registered for write events, I add OP_WRITE interest
       // and wake up the selector to process it immediately.
       if (key != null && key.isValid() && (key.interestOps() & SelectionKey.OP_WRITE) == 0) {
         key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
@@ -239,7 +233,6 @@ public class GameServer {
         key.cancel();
         if (channel != null && channel.isOpen()) channel.close();
       } catch (IOException e) {
-        // Ignored, as we are already handling a disconnect.
       }
       return;
     }
@@ -259,7 +252,7 @@ public class GameServer {
     }
   }
 
-  // A graceful shutdown sequence for the entire server.
+  // This is a graceful shutdown sequence for the entire server.
   public void shutdown() {
     if (!running) return;
     logger.info("Server shutdown initiated...");
@@ -271,7 +264,7 @@ public class GameServer {
           try {
             if (key.channel() != null) key.channel().close();
           } catch (IOException e) {
-            // Ignored, we are shutting down anyway.
+            // Ignored, I'm shutting down anyway.
           }
         }
         selector.close();

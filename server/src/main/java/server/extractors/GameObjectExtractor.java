@@ -7,10 +7,8 @@ import java.util.Objects;
 import server.GameContextServer;
 import server.GameSession;
 
-/**
- * A utility class for parsing game object data from a CaseFile and populating the corresponding
- * Room objects within a GameContext.
- */
+// I use this utility class to parse game object data from a CaseFile and populate the corresponding
+// Room objects.
 public class GameObjectExtractor {
 
   private GameObjectExtractor() {}
@@ -24,8 +22,8 @@ public class GameObjectExtractor {
 
     if (caseFile.getRooms() == null) return;
 
-    // This process iterates through each room defined in the case file, finds
-    // the already-created Room object, and adds its game objects to it.
+    // This process iterates through each room in the case file, finds the already-created Room
+    // object, and adds its game objects.
     for (CaseFile.RoomData roomData : caseFile.getRooms()) {
       if (roomData.getName() == null) continue;
       Room room = context.getRoomByName(roomData.getName());

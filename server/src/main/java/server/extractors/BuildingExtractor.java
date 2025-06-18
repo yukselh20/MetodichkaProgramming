@@ -7,10 +7,8 @@ import java.util.stream.Collectors;
 import server.GameContextServer;
 import server.GameSession;
 
-/**
- * A utility class responsible for parsing room and building structure data from a CaseFile object
- * and populating the game world within a GameContext.
- */
+// This utility class to parse room and building structure data from a CaseFile
+// and populate the game world within a GameContext.
 public class BuildingExtractor {
 
   private static final Set<String> VALID_DIRECTIONS =
@@ -18,11 +16,9 @@ public class BuildingExtractor {
 
   private BuildingExtractor() {}
 
-  /**
-   * Loads all rooms from a CaseFile, creates Room objects, and links them together. This method
-   * performs a two-pass process: the first pass creates all Room instances, and the second pass
-   * connects them as neighbors.
-   */
+  // I load all rooms from a CaseFile here. I use a two-pass process: the first pass creates all
+  // Room
+  // instances, and the second pass connects them as neighbors.
   public static boolean loadBuilding(CaseFile caseFile, GameContextServer context) {
     Objects.requireNonNull(caseFile, "CaseFile cannot be null.");
     Objects.requireNonNull(context, "GameContextServer cannot be null.");
@@ -39,7 +35,7 @@ public class BuildingExtractor {
       return false;
     }
 
-    // First pass: Create all Room objects to ensure they exist before we try to link them.
+    // First pass: I create all Room objects to ensure they exist before trying to link them.
     for (CaseFile.RoomData roomData : caseFile.getRooms()) {
       if (roomData.getName() == null || roomData.getName().isBlank()) {
         System.err.println("Session [" + sessionId + "]: Room with blank name. Skipping.");
@@ -60,7 +56,7 @@ public class BuildingExtractor {
       context.addRoom(room);
     }
 
-    // Second pass: Link all the newly created rooms together as neighbors.
+    // Second pass: I link all the newly created rooms together as neighbors.
     for (CaseFile.RoomData roomData : caseFile.getRooms()) {
       Room currentRoom = roomMap.get(roomData.getName());
       if (currentRoom == null || roomData.getNeighbors() == null) continue;
@@ -123,7 +119,7 @@ public class BuildingExtractor {
       return false;
     }
 
-    // After loading, a connectivity check ensures all rooms are reachable from the start.
+    // After loading, I run a connectivity check to ensure all rooms are reachable from the start.
     if (!hasErrors && !context.getRooms().isEmpty()) {
       try {
         validateRoomConnectivity(context, startingRoom, sessionId);
@@ -139,10 +135,8 @@ public class BuildingExtractor {
     return !hasErrors;
   }
 
-  /**
-   * Validates that all loaded rooms are interconnected and reachable from the starting room. It
-   * performs a Breadth-First Search (BFS) traversal of the room graph.
-   */
+  // This validates that all loaded rooms are interconnected and reachable from the starting room.
+  // I use a Breadth-First Search (BFS) traversal of the room graph.
   private static void validateRoomConnectivity(
       GameContextServer context, Room startRoom, String sessionId) {
     Set<Room> visited = new HashSet<>();
@@ -161,8 +155,8 @@ public class BuildingExtractor {
       if (currentRoom.getNeighbors() != null) {
         for (Room neighbor : currentRoom.getNeighbors().values()) {
           if (neighbor != null && !visited.contains(neighbor)) {
-            // This check ensures we don't try to traverse to a neighbor
-            // that was defined in the JSON but failed to load.
+            // This check ensures I don't try to traverse to a neighbor that was defined in the JSON
+            // but failed to load.
             if (allLoadedRooms.containsValue(neighbor)) {
               visited.add(neighbor);
               queue.add(neighbor);
@@ -181,8 +175,8 @@ public class BuildingExtractor {
       }
     }
 
-    // If the number of visited rooms does not match the total number of loaded
-    // rooms, it means some rooms are unreachable, which is a critical map error.
+    // If the number of visited rooms doesn't match the total, some rooms are unreachable, which is
+    // a critical map error.
     if (visited.size() != allLoadedRooms.size()) {
       Set<String> unreachable =
           allLoadedRooms.values().stream()

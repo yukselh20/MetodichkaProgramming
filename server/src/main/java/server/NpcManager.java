@@ -13,10 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.extractors.SuspectExtractor;
 
-/**
- * Manages all Non-Player Characters (NPCs) within a single game context. This class is responsible
- * for initializing NPCs from a case file and handling their autonomous movement logic.
- */
+// This to manage all Non-Player Characters (NPCs) within a single game context.
+// It's responsible for initializing them from a case file and handling their movement logic.
 public class NpcManager {
 
   private static final Logger logger = LoggerFactory.getLogger(NpcManager.class);
@@ -28,7 +26,7 @@ public class NpcManager {
     this.context = Objects.requireNonNull(context);
   }
 
-  /** Clears any existing NPCs and initializes new ones based on the provided CaseFile. */
+  // This clears any existing NPCs and initializes new ones from the provided CaseFile.
   public void initializeNpcs(CaseFile caseFile, Map<String, Room> allRooms) {
     this.suspects.clear();
     this.watson = null;
@@ -68,12 +66,10 @@ public class NpcManager {
     return Collections.unmodifiableList(suspects);
   }
 
-  /**
-   * This logic is triggered when a player leaves a room. It checks if any NPCs in that room should
-   * now consider moving into an adjacent, unoccupied room.
-   */
+  // I trigger this logic when a player leaves a room. It checks if any NPCs in that
+  // room should now consider moving into an adjacent, unoccupied room.
   public void triggerNpcMovementChecks(Room roomLeft, Map<String, Detective> players) {
-    // NPC movement is only considered if the room they are in becomes empty of all players.
+    // I only consider NPC movement if the room they are in becomes empty of all players.
     boolean isRoomEmptyOfPlayers =
         players.values().stream().noneMatch(p -> roomLeft.equals(p.getCurrentRoom()));
 
@@ -92,21 +88,21 @@ public class NpcManager {
     }
   }
 
-  // Moves an NPC to a random, valid, and player-unoccupied adjacent room.
+  // This moves an NPC to a random, valid, and player-unoccupied adjacent room.
   private void moveNpcToValidRoom(MovableCharacter npc, Map<String, Detective> players) {
     if (npc.getCurrentRoom() == null) return;
 
     Room oldNpcRoom = npc.getCurrentRoom();
     String npcName = (npc instanceof Suspect) ? ((Suspect) npc).getName() : "Dr. Watson";
 
-    // First, determine all rooms currently occupied by players.
+    // First, I determine all rooms currently occupied by players.
     Set<Room> playerOccupiedRooms =
         players.values().stream()
             .map(Detective::getCurrentRoom)
             .filter(Objects::nonNull)
             .collect(Collectors.toSet());
 
-    // Then, find all neighboring rooms that are not occupied by any player.
+    // Then, I find all neighboring rooms that are not occupied by any player.
     List<Room> validDestinations =
         oldNpcRoom.getNeighbors().values().stream()
             .filter(Objects::nonNull)
@@ -121,7 +117,7 @@ public class NpcManager {
       logger.info(
           "NPC {} moved from '{}' to '{}'.", npcName, oldNpcRoom.getName(), newNpcRoom.getName());
 
-      // Notify any players in the destination room that the NPC has arrived.
+      // I'll notify any players in the destination room that the NPC has arrived.
       players.forEach(
           (pid, detective) -> {
             if (newNpcRoom.equals(detective.getCurrentRoom())) {

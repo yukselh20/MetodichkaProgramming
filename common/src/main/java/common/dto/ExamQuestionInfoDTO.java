@@ -3,10 +3,7 @@ package common.dto;
 import java.io.Serializable;
 import java.util.Objects;
 
-/**
- * A DTO that carries the information for a single final exam question, sent from the server to the
- * client to be displayed to the players.
- */
+// This DTO carries the info for a single final exam question, sent from the server to the client.
 public class ExamQuestionInfoDTO implements Serializable {
   private static final long serialVersionUID = 18L;
 
@@ -16,8 +13,7 @@ public class ExamQuestionInfoDTO implements Serializable {
 
   public ExamQuestionInfoDTO(String questionText, int questionNumber, int totalQuestions) {
     this.questionText = Objects.requireNonNull(questionText, "Question text cannot be null");
-    // Constructor validation ensures that the DTO cannot be created with
-    // invalid data, such as a negative question number.
+    // constructor validation ensures that I cannot create this DTO with invalid data.
     if (questionNumber <= 0)
       throw new IllegalArgumentException("Question number must be positive.");
     if (totalQuestions <= 0)

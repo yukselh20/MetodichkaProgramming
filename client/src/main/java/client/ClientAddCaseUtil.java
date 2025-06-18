@@ -16,22 +16,17 @@ import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Provides static methods for the client to add a case file to its local storage. This entire
- * operation is performed on the client side without server interaction.
- */
+// this utility with static methods for the client to add a case file
+// to its local storage. This is done entirely on the client side without server interaction.
 public class ClientAddCaseUtil {
 
   private static final Logger logger = LoggerFactory.getLogger(ClientAddCaseUtil.class);
 
-  // The mapper is configured to ignore unknown JSON properties. This makes parsing
-  // more robust if the case file format is updated with new fields in the future.
   private static final ObjectMapper mapper =
       new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
   private static final String LOCAL_CASES_DIR = "cases";
 
-  // A private constructor prevents this utility class from being instantiated.
   private ClientAddCaseUtil() {}
 
   public static boolean addCaseFromFile(String sourceFilePath) {
@@ -51,7 +46,7 @@ public class ClientAddCaseUtil {
     }
 
     try {
-      // The case file is read here first to extract its title. This is necessary
+      // I read the case file here first to extract its title. I need this
       // to check for duplicates against existing local cases.
       CaseFile newCaseData = mapper.readValue(sourceFile, CaseFile.class);
       if (newCaseData.getTitle() == null || newCaseData.getTitle().isBlank()) {
@@ -83,8 +78,8 @@ public class ClientAddCaseUtil {
       String extension = originalFileName.substring(originalFileName.lastIndexOf('.'));
       File destinationFile = new File(localCasesDirFile, originalFileName);
 
-      // If a file with the same name already exists, append a number to create a
-      // unique filename. This prevents accidentally overwriting other case files.
+      // If a file with the same name already exists, I'll append a number to create a
+      // unique filename. This prevents from accidentally overwriting other case files.
       int counter = 1;
       while (destinationFile.exists()) {
         String newFileName = fileNameWithoutExtension + "_" + counter + extension;
@@ -124,15 +119,14 @@ public class ClientAddCaseUtil {
                   if (caseFile.getTitle() != null) {
                     cases.add(caseFile);
                   }
-                  // A malformed JSON file should not crash the entire process.
-                  // We log the error and continue checking other files.
+                  // A malformed JSON file shouldn't crash the entire process.
+                  // I just log the error and continue.
                 } catch (IOException e) {
-                  // Intentionally ignore files that cannot be parsed.
+                  // I'll intentionally ignore files that cannot be parsed.
                   logger.warn("Could not parse file '{}', skipping.", filePath.getFileName(), e);
                 }
               });
     } catch (IOException e) {
-      // Intentionally ignore directory listing errors for this helper method.
       logger.error("Could not list files in directory '{}'", directoryPath, e);
     }
     return cases;

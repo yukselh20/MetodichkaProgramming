@@ -6,10 +6,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * A Data Transfer Object sent from the server to the client, containing a list of all unique cases
- * available for hosting a game.
- */
+// This DTO is sent from the server to the client. It contains a list of all unique cases
+// available for hosting a game.
 public class AvailableCasesDTO implements Serializable {
   private static final long serialVersionUID = 8L;
 
@@ -17,8 +15,7 @@ public class AvailableCasesDTO implements Serializable {
 
   public AvailableCasesDTO(List<CaseInfoDTO> uniqueCases) {
     Objects.requireNonNull(uniqueCases, "Unique case list cannot be null");
-    // The list is wrapped in an unmodifiable view to ensure immutability,
-    // which is a good practice for DTOs to prevent unintended side effects.
+    // I wrap the list in an unmodifiable view to ensure immutability.
     this.uniqueCases = Collections.unmodifiableList(new ArrayList<>(uniqueCases));
   }
 

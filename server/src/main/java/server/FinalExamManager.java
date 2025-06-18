@@ -13,11 +13,8 @@ import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Manages the state and logic for the final exam portion of a game session. This class is
- * responsible for asking questions, tracking answers, scoring, and determining the outcome of the
- * exam.
- */
+// This class to manage the state and logic for the final exam. It's responsible
+// for asking questions, tracking answers, scoring, and determining the outcome.
 public class FinalExamManager {
 
   private static final Logger logger = LoggerFactory.getLogger(FinalExamManager.class);
@@ -38,11 +35,10 @@ public class FinalExamManager {
     return parentSession.getCurrentState() == GameSession.SessionState.FINAL_EXAM;
   }
 
-  /**
-   * Processes a player's attempt to initiate the final exam, checking permissions and game state
-   * before starting the process.
-   */
-  public void processFinalExamAttempt(String initiatingPlayerId) {
+  // This processes a player's attempt to initiate the final exam, checking
+  // permissions and game state before starting.
+  public void processFinalExamAttempt(
+      String initiatingPlayerId, String guestUsername, String hostUsername) {
     if (!context.isCaseStarted(initiatingPlayerId)) {
       context.sendResponseToPlayer(
           initiatingPlayerId, new TextMessage("The case has not started yet."));
@@ -61,21 +57,20 @@ public class FinalExamManager {
       return;
     }
 
-    // Only the host can start the exam directly. A guest's attempt is
-    // forwarded as a request to the host.
+    // Only the host can start the exam directly. A guest's attempt is forwarded as a request.
     if (parentSession.isHost(initiatingPlayerId)) {
-      logger.info("HOST {} is initiating Final Exam.", initiatingPlayerId);
-      startExamProcess(initiatingPlayerId);
+      logger.info("HOST {} is initiating Final Exam.", hostUsername);
+      startExamProcess(hostUsername);
     } else {
       String hostId = parentSession.getHostPlayerId();
       if (hostId != null) {
         context.sendResponseToPlayer(
             hostId,
             new TextMessage(
-                initiatingPlayerId + " requests you to start the final exam. Type 'final exam'."));
+                guestUsername + " requests you to start the final exam. Type 'final exam'."));
         context.sendResponseToPlayer(
             initiatingPlayerId,
-            new TextMessage("Request sent to host (" + hostId + ") to initiate final exam."));
+            new TextMessage("Request sent to host (" + hostUsername + ") to initiate final exam."));
       } else {
         context.sendResponseToPlayer(
             initiatingPlayerId,
@@ -84,14 +79,14 @@ public class FinalExamManager {
     }
   }
 
-  // Resets all exam state and begins the questioning process.
-  private void startExamProcess(String hostPlayerId) {
+  // This resets all exam state and begins the questioning process.
+  private void startExamProcess(String hostUsername) {
     CaseFile selectedCase = context.getSelectedCase();
     if (selectedCase == null
         || selectedCase.getFinalExam() == null
         || selectedCase.getFinalExam().isEmpty()) {
       context.sendResponseToPlayer(
-          hostPlayerId, new TextMessage("No final exam questions available for this case."));
+          hostUsername, new TextMessage("No final exam questions available for this case."));
       return;
     }
 
@@ -101,11 +96,11 @@ public class FinalExamManager {
     playerSubmittedAnswers.clear();
 
     parentSession.broadcastToSession(
-        new TextMessage("--- Final Exam Initiated by " + hostPlayerId + " ---"), null);
-    sendNextExamQuestionToSession(hostPlayerId);
+        new TextMessage("--- Final Exam Initiated by " + hostUsername + " ---"), null);
+    sendNextExamQuestionToSession(hostUsername);
   }
 
-  // Sends the next question to all players or ends the exam if all questions have been asked.
+  // This sends the next question to all players or ends the exam if all questions have been asked.
   private void sendNextExamQuestionToSession(String hostPlayerId) {
     CaseFile selectedCase = context.getSelectedCase();
     if (selectedCase == null || selectedCase.getFinalExam() == null) return;
@@ -116,31 +111,21 @@ public class FinalExamManager {
       ExamQuestionInfoDTO qInfo =
           new ExamQuestionInfoDTO(
               currentQ.getQuestion(), currentQuestionIndex + 1, examQuestions.size());
+
+      // I broadcast the question DTO to everyone.
       parentSession.broadcastToSession(qInfo, null);
 
-      // Specific prompts are sent to the host (to answer) and guests (to wait).
+      // Then I send the specific "answer now" prompt ONLY to the host.
       parentSession.sendMessageToPlayer(
           hostPlayerId,
           new TextMessage("Host, please submit your answer for Q" + (currentQuestionIndex + 1)));
-      for (String playerId : parentSession.getPlayerIds()) {
-        if (!playerId.equals(hostPlayerId)) {
-          parentSession.sendMessageToPlayer(
-              playerId,
-              new TextMessage(
-                  hostPlayerId
-                      + " is answering question "
-                      + (currentQuestionIndex + 1)
-                      + "/"
-                      + examQuestions.size()
-                      + "."));
-        }
-      }
+
     } else {
       evaluateAndBroadcastExamResults(hostPlayerId);
     }
   }
 
-  // Validates and records an answer submitted by the host.
+  // This validates and records an answer submitted by the host.
   public void processExamAnswer(String hostPlayerId, int questionNumber, String answerText) {
     if (!isExamActive()) {
       context.sendResponseToPlayer(
@@ -152,7 +137,7 @@ public class FinalExamManager {
           hostPlayerId, new TextMessage("Only the host can submit exam answers."));
       return;
     }
-    // Ensures answers are submitted in the correct order.
+    // This ensures answers are submitted in the correct order.
     if (questionNumber != (currentQuestionIndex + 1)) {
       context.sendResponseToPlayer(
           hostPlayerId,
@@ -176,7 +161,7 @@ public class FinalExamManager {
     sendNextExamQuestionToSession(hostPlayerId);
   }
 
-  // Calculates the final score, determines the outcome, and broadcasts the results.
+  // This calculates the final score, determines the outcome, and broadcasts the results.
   private void evaluateAndBroadcastExamResults(String hostPlayerId) {
     int score = playerExamScores.getOrDefault(hostPlayerId, 0);
     int totalQuestions = context.getSelectedCase().getFinalExam().size();
@@ -212,8 +197,8 @@ public class FinalExamManager {
         new ExamResultDTO(score, totalQuestions, rank, feedbackMessage, incorrectDetails);
     parentSession.broadcastToSession(resultDTO, null);
 
-    // On victory, the game is marked as completed. On failure, the exam state
-    // is reset, and the game returns to the active investigation phase.
+    // On victory, I mark the game as completed. On failure, I reset the exam state
+    // and return the game to the active investigation phase.
     if (isVictory) {
       parentSession.setGameCompleted(true);
     } else {

@@ -3,10 +3,8 @@ package common.dto;
 import java.io.Serializable;
 import java.util.*;
 
-/**
- * A comprehensive DTO that encapsulates the entire state of a game session. Its primary purpose is
- * for persistence, allowing a game's progress to be saved to disk and resumed later.
- */
+// This is a comprehensive DTO that encapsulates the entire state of a game session.
+// I use it for persistence, allowing a game's progress to be saved.
 public class GameStateData implements Serializable {
   private static final long serialVersionUID = 3L;
 
@@ -42,9 +40,8 @@ public class GameStateData implements Serializable {
     Objects.requireNonNull(npcLocations, "NPC locations map cannot be null");
     Objects.requireNonNull(completedTasks, "Completed tasks list cannot be null");
 
-    // The constructor creates defensive copies of all mutable collections. This
-    // ensures that the DTO's internal state cannot be altered after creation
-    // by modifying the original collections passed to the constructor.
+    // this constructor creates defensive copies of all mutable collections. This
+    // ensures the DTO's internal state cannot be altered after creation.
     this.gameSessionId = gameSessionId;
     this.caseTitle = caseTitle;
     this.playerIds = new ArrayList<>(playerIds);

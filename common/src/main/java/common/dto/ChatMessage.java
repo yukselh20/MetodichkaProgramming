@@ -5,10 +5,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
-/**
- * A DTO representing a single chat message sent between players or by the system. It is timestamped
- * on creation to maintain a chronological record.
- */
+// This DTO represents a single chat message. I timestamp it on creation to maintain a chronological
+// record.
 public class ChatMessage implements Serializable {
   private static final long serialVersionUID = 2L;
 
@@ -23,12 +21,9 @@ public class ChatMessage implements Serializable {
     Objects.requireNonNull(message, "Chat message content cannot be null");
     this.senderName = senderName;
     this.message = message;
-    // The timestamp is automatically generated on the server upon message creation.
     this.timestamp = LocalDateTime.now();
   }
 
-  // This constructor allows for creating messages with a specific timestamp,
-  // which can be useful for testing or re-creating events.
   public ChatMessage(String senderName, String message, LocalDateTime timestamp) {
     Objects.requireNonNull(senderName, "Sender name cannot be null");
     Objects.requireNonNull(message, "Chat message content cannot be null");
@@ -50,7 +45,6 @@ public class ChatMessage implements Serializable {
     return timestamp;
   }
 
-  // Provides a standardized, user-friendly format for displaying the chat message.
   public String getFormattedMessage() {
     return String.format("[%s] %s: %s", timestamp.format(TIME_FORMATTER), senderName, message);
   }
@@ -65,8 +59,8 @@ public class ChatMessage implements Serializable {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     ChatMessage that = (ChatMessage) o;
-    // Two chat messages are considered equal if the sender and content match;
-    // the timestamp is ignored for this comparison.
+    // I consider two chat messages equal if the sender and content match; the timestamp is ignored
+    // for this comparison.
     return senderName.equals(that.senderName) && message.equals(that.message);
   }
 

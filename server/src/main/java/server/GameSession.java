@@ -5,24 +5,19 @@ import common.Commands.*;
 import common.NetworkConstants;
 import common.dto.*;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.SQLClasses.model.User;
 
-/**
- * Manages the lifecycle and state of a single game instance, from lobby creation to game
- * completion. It holds the players for one game and owns the corresponding GameContextServer that
- * contains the actual game world.
- */
+// I created this to manage the lifecycle and state of a single game instance, from lobby creation
+// to completion. It holds the players for one game and owns the GameContextServer.
 public class GameSession {
 
   private static final Logger logger = LoggerFactory.getLogger(GameSession.class);
 
-  // The state machine defines the lifecycle of a single game session.
+  // This state machine defines the lifecycle of a single game session.
   public enum SessionState {
     CREATED,
     WAITING_FOR_PLAYER,
@@ -59,14 +54,14 @@ public class GameSession {
     }
   }
 
-  // A synchronized method to safely add players to the session.
+  // I synchronized this method to safely add players to the session.
   public synchronized void addPlayer(ClientSession playerClientSession) {
     if (players.size() < NetworkConstants.MAX_PLAYERS_PER_GAME
         && players.stream()
             .noneMatch(p -> p.getPlayerId().equals(playerClientSession.getPlayerId()))) {
       players.add(playerClientSession);
       gameContext.addPlayer(playerClientSession.getPlayerId());
-      // The first player to join a session is designated as the host.
+      // I designate the first player to join a session as the host.
       if (players.size() == 1) {
         this.hostPlayerId = playerClientSession.getPlayerId();
         setSessionState(SessionState.WAITING_FOR_PLAYER);
@@ -79,7 +74,7 @@ public class GameSession {
     }
   }
 
-  // Kicks off the process of loading the case data into the game context.
+  // This kicks off the process of loading the case data into the game context.
   public void initializeSession() {
     if (currentState != SessionState.WAITING_FOR_PLAYER
         || players.size() < NetworkConstants.MAX_PLAYERS_PER_GAME) {
@@ -101,7 +96,7 @@ public class GameSession {
             "All players have joined. Loading case: " + selectedCaseInfo.getTitle() + "..."),
         null);
 
-    // The server authoritatively loads the case from its own file system to ensure consistency.
+    // I authoritatively load the case from the server's own file system to ensure consistency.
     Optional<CaseFile> caseToLoadOpt =
         server.extractors.CaseLoader.loadCases(casesDir).stream()
             .filter(
@@ -151,10 +146,17 @@ public class GameSession {
     logger.error("Session [{}] init failed: {}", sessionId, errorMessage);
   }
 
-  /**
-   * The main message router for a session. It directs incoming commands and chat messages to the
-   * appropriate handlers based on the current game state.
-   */
+  public String getUsernameFromPlayerId(String playerId) {
+    return players.stream()
+        .filter(p -> p.getPlayerId().equals(playerId))
+        .findFirst()
+        .map(ClientSession::getAuthenticatedUser)
+        .map(User::getUsername)
+        .orElse(playerId); // Fallback to the ID if user/username not found
+  }
+
+  // This is my main message router for a session. It directs incoming commands and chat messages
+  // to the appropriate handlers based on the current game state.
   public void processMessage(String senderPlayerId, Object message) {
     if (currentState.name().startsWith("ENDED_")) {
       sendMessageToPlayer(senderPlayerId, new TextMessage("This game session has already ended."));
@@ -165,7 +167,7 @@ public class GameSession {
       Command command = (Command) message;
       command.setPlayerId(senderPlayerId);
 
-      // This logic block routes special, state-changing commands to the context.
+      // I use this block to route special, state-changing commands to the context.
       if (command instanceof StartCaseCommand) {
         gameContext.processStartCaseAttempt(senderPlayerId);
       } else if (command instanceof FinalExamCommand) {
@@ -204,8 +206,28 @@ public class GameSession {
       if (currentState != SessionState.CREATED
           && currentState != SessionState.LOADING_CASE
           && !currentState.name().startsWith("ENDED_")) {
-        ChatMessage chat = (ChatMessage) message;
-        broadcastToSession(new ChatMessage(senderPlayerId, chat.getMessage()), null);
+
+        ChatMessage incomingChat = (ChatMessage) message;
+
+        Optional<ClientSession> senderSessionOpt =
+            players.stream().filter(p -> p.getPlayerId().equals(senderPlayerId)).findFirst();
+
+        if (senderSessionOpt.isPresent()) {
+          ClientSession senderClient = senderSessionOpt.get();
+          User authenticatedUser = senderClient.getAuthenticatedUser();
+
+          String displayName =
+              (authenticatedUser != null) ? authenticatedUser.getUsername() : senderPlayerId;
+
+          ChatMessage broadcastMessage = new ChatMessage(displayName, incomingChat.getMessage());
+          broadcastToSession(broadcastMessage, null);
+
+        } else {
+          logger.warn(
+              "Received chat message from player '{}' who is not in this session '{}'.",
+              senderPlayerId,
+              sessionId);
+        }
       } else {
         sendMessageToPlayer(
             senderPlayerId,
@@ -221,7 +243,7 @@ public class GameSession {
     }
   }
 
-  // A helper to determine if a command is a standard in-game action.
+  // This helper determines if a command is a standard in-game action.
   private boolean isCommandAllowedInActiveState(Command command) {
     return !(command instanceof StartCaseCommand
         || command instanceof FinalExamCommand
@@ -229,12 +251,9 @@ public class GameSession {
         || command instanceof HelpCommand);
   }
 
-  /**
-   * Handles the logic for a player disconnecting, which differs significantly depending on whether
-   * the player was the host or a guest.
-   *
-   * @return true if the session should be terminated as a result.
-   */
+  // Handles a player disconnecting. The logic differs significantly depending
+  // on whether the player was the host or a guest. Returns true if the session
+  // should be terminated as a result.
   public synchronized boolean handlePlayerDisconnect(String playerId) {
     Optional<ClientSession> playerToRemoveOpt =
         players.stream().filter(p -> p.getPlayerId().equals(playerId)).findFirst();
@@ -243,23 +262,33 @@ public class GameSession {
       return false;
     }
 
-    players.remove(playerToRemoveOpt.get());
+    ClientSession disconnectedClient = playerToRemoveOpt.get();
+    String username = getUsernameFromPlayerId(disconnectedClient.getPlayerId());
+
+    players.remove(disconnectedClient);
     gameContext.handlePlayerDisconnect(playerId);
 
     logger.info(
-        "Player {} removed from session [{}]. Remaining: {}", playerId, sessionId, players.size());
+        "Player {} ({}) removed from session [{}]. Remaining: {}",
+        username,
+        playerId,
+        sessionId,
+        players.size());
 
     // If the host disconnects, the game is over for everyone.
     if (isHost(playerId)) {
-      logger.warn("Host has disconnected from session [{}]. Terminating session.", sessionId);
+      logger.warn(
+          "Host {} has disconnected from session [{}]. Terminating session.", username, sessionId);
       broadcastToSession(
-          new TextMessage("The host has disconnected. The game session has ended."), null);
+          new TextMessage(
+              "The host, " + username + ", has disconnected. The game session has ended."),
+          null);
       return true;
     } else {
       // If a guest disconnects, the game continues for the remaining players.
       logger.info(
-          "Guest {} has disconnected from session [{}]. Game continues.", playerId, sessionId);
-      broadcastToSession(new TextMessage("Player " + playerId + " has left the game."), playerId);
+          "Guest {} has disconnected from session [{}]. Game continues.", username, sessionId);
+      broadcastToSession(new TextMessage(username + " has left the game."), playerId);
       return false;
     }
   }
@@ -305,14 +334,13 @@ public class GameSession {
 
   public void broadcastToSession(Serializable message, String senderPlayerIdToExclude) {
     for (ClientSession player : players) {
-      if (senderPlayerIdToExclude == null
-          || !player.getPlayerId().equals(senderPlayerIdToExclude)) {
+      if (!player.getPlayerId().equals(senderPlayerIdToExclude)) {
         gameServer.queueWrite(player.getChannel(), message);
       }
     }
   }
 
-  // A synchronized setter to ensure thread-safe state transitions for the session.
+  // I made this setter synchronized to ensure thread-safe state transitions for the session.
   public synchronized void setSessionState(SessionState newState) {
     if (this.currentState != newState) {
       logger.info(
@@ -353,11 +381,8 @@ public class GameSession {
     return Objects.equals(playerId, hostPlayerId);
   }
 
-  /**
-   * Finalizes the game session, setting its end state and triggering cleanup.
-   *
-   * @param victory true if the game was won, false otherwise.
-   */
+  // This finalizes the game session, setting its end state and triggering cleanup.
+  // The 'victory' parameter determines if the game was won or lost.
   public void setGameCompleted(boolean victory) {
     if (currentState.name().startsWith("ENDED_")) {
       return;
@@ -373,10 +398,14 @@ public class GameSession {
 
     broadcastToSession(new TextMessage(outcomeMessage + " The session will end shortly."), null);
 
-    // After notifying players, the session tells the GameSessionManager to remove it
-    // from all tracking lists, effectively cleaning up the completed game.
+    // After notifying players, I tell the GameSessionManager to remove this session,
+    // effectively cleaning up the completed game.
     if (gameServer != null && gameServer.getGameSessionManager() != null) {
       gameServer.getGameSessionManager().removeSession(this.sessionId);
     }
+  }
+
+  public List<ClientSession> getPlayers() {
+    return Collections.unmodifiableList(players);
   }
 }

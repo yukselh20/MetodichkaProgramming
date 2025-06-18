@@ -6,17 +6,14 @@ import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * A command representing a client's request to join a specific public game lobby identified by its
- * session ID.
- */
+// I created this command to represent a client's request to join a specific public
+// game lobby, identified by its session ID.
 public class JoinPublicGameCommand extends BaseCommand implements Serializable {
   private static final Logger logger = LoggerFactory.getLogger(JoinPublicGameCommand.class);
   private static final long serialVersionUID = 116L;
   private final String targetGameSessionId;
 
   public JoinPublicGameCommand(String targetGameSessionId) {
-    // Joining a game happens in the lobby, before a case is started.
     super(false);
     this.targetGameSessionId =
         Objects.requireNonNull(targetGameSessionId, "Target session ID cannot be null");
@@ -30,11 +27,8 @@ public class JoinPublicGameCommand extends BaseCommand implements Serializable {
 
   @Override
   protected void executeCommand(String[] args_unused, ICommandContext context) {
-    // Similar to other lobby commands, this should be handled by the
-    // GameSessionManager. This code block serves as a safeguard against
-    // incorrect message routing.
     logger.warn(
-        "JoinPublicGameCommand reached GameContextServer for player {}. This indicates a message routing error and should be handled by GameSessionManager.",
+        "JoinPublicGameCommand reached GameContextServer for player {}. This is a routing error.",
         getPlayerId());
     context.sendResponseToPlayer(
         getPlayerId(),

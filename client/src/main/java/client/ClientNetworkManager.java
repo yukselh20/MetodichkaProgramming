@@ -20,11 +20,9 @@ import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Manages all low-level network I/O for the client using Java NIO. It runs in a separate thread to
- * handle non-blocking communication, and uses callbacks to pass events (like received messages or
- * disconnects) back to the GameClient, decoupling network logic from game logic.
- */
+// all low-level network I/O for the client is managed using Java NIO. I run this in a separate
+// thread for non-blocking communication and use callbacks to pass events back to the GameClient,
+// decoupling the network logic from the game logic.
 public class ClientNetworkManager implements Runnable {
 
   private static final Logger logger = LoggerFactory.getLogger(ClientNetworkManager.class);
@@ -32,16 +30,12 @@ public class ClientNetworkManager implements Runnable {
   private final String host;
   private final int port;
   private final ClientStateManager stateManager;
-  // Callbacks are used to invert control, allowing this class to notify
-  // the GameClient of network events without needing a direct reference to it.
   private final Consumer<Object> onMessageReceived;
   private final Consumer<String> onDisconnect;
 
   private volatile SocketChannel socketChannel;
   private volatile Selector selector;
 
-  // A thread-safe queue is used to pass messages from the main input thread
-  // to this dedicated network thread for sending.
   private final BlockingQueue<Serializable> outgoingMessages = new LinkedBlockingQueue<>();
   private final ByteBuffer readBuffer = ByteBuffer.allocate(NetworkConstants.DEFAULT_BUFFER_SIZE);
 
@@ -64,8 +58,6 @@ public class ClientNetworkManager implements Runnable {
         "Message {} added to outgoing queue (current size: {}).",
         message.getClass().getSimpleName(),
         outgoingMessages.size());
-    // Waking up the selector is crucial. If the selector is blocked in a call
-    // to select(), this ensures it wakes up to register the new write interest.
     if (selector != null && selector.isOpen()) {
       selector.wakeup();
     }
@@ -79,23 +71,16 @@ public class ClientNetworkManager implements Runnable {
             || !socketChannel.isOpen()
             || selector == null
             || !selector.isOpen()) {
-          // A short sleep prevents this loop from consuming 100% CPU
-          // while waiting for a connection to be established.
           Thread.sleep(200);
           continue;
         }
 
-        // If the outgoing queue has messages, we register OP_WRITE interest.
-        // This tells the selector to notify us when the socket is ready for writing.
         if (!outgoingMessages.isEmpty()) {
           SelectionKey key = socketChannel.keyFor(selector);
           if (key != null && key.isValid() && (key.interestOps() & SelectionKey.OP_WRITE) == 0) {
             key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
           }
         }
-
-        // The timeout on select() ensures the loop doesn't block forever,
-        // allowing it to periodically check the stateManager.isRunning() flag.
         if (selector.select(1000) == 0) {
           continue;
         }
@@ -136,7 +121,7 @@ public class ClientNetworkManager implements Runnable {
       if (!stateManager.isRunning()) return false;
 
       try {
-        // A new Selector and SocketChannel are created for each connection
+        // create a new Selector and SocketChannel for each connection
         // attempt to ensure a clean state after a failure.
         selector = Selector.open();
         socketChannel = SocketChannel.open();
@@ -158,8 +143,8 @@ public class ClientNetworkManager implements Runnable {
                 logger.debug("Channel is connectable.");
                 if (socketChannel.finishConnect()) {
                   logger.info("==> Connection FINISHED successfully!");
-                  // Once connected, we are only interested in reading data
-                  // until we have something to send.
+                  // Once connected, I'm only interested in reading data
+                  // until there is something to send.
                   key.interestOps(SelectionKey.OP_READ);
                   return true;
                 }
@@ -180,8 +165,6 @@ public class ClientNetworkManager implements Runnable {
         return false;
       }
 
-      // Exponential backoff increases the delay between retries, giving the
-      // server time to recover without overwhelming it with connection requests.
       if (attempt < maxRetries) {
         try {
           Thread.sleep(delayMillis * attempt);
@@ -205,9 +188,9 @@ public class ClientNetworkManager implements Runnable {
     if (bytesRead > 0) {
       logger.debug("Read {} bytes from the network.", bytesRead);
       readBuffer.flip();
-      // This loop processes all complete messages within the buffer. This is
-      // important because a single read operation might receive multiple
-      // messages or an incomplete one from the TCP stream.
+      // This loop processes all complete messages within the buffer. It's
+      // important because a single read might receive multiple messages
+      // or an incomplete one from the TCP stream.
       while (readBuffer.remaining() >= NetworkConstants.MESSAGE_LENGTH_HEADER_SIZE) {
         readBuffer.mark();
         int messageLength = readBuffer.getInt();
@@ -227,7 +210,7 @@ public class ClientNetworkManager implements Runnable {
             logger.error("Error deserializing server message", e);
           }
         } else {
-          // If the buffer doesn't contain the full message yet, we reset its
+          // If the buffer doesn't contain the full message yet, I reset its
           // position to the mark and wait for more data to arrive.
           logger.trace(
               "Incomplete message received. Waiting for more data. Needed: {}, Have: {}",
@@ -238,7 +221,7 @@ public class ClientNetworkManager implements Runnable {
         }
       }
       // `compact()` moves any leftover, partial message data to the beginning
-      // of the buffer, preparing it for the next read operation.
+      // of the buffer, preparing it for the next read.
       readBuffer.compact();
     }
   }
@@ -253,19 +236,19 @@ public class ClientNetworkManager implements Runnable {
           buffer.limit());
 
       while (buffer.hasRemaining()) {
-        // If write() returns 0, it means the socket's send buffer is full.
-        // We must stop writing and wait for the selector to notify us again.
+        // If write() returns 0, the socket's send buffer is full.
+        // I must stop writing and wait for the selector to notify me again.
         if (socketChannel.write(buffer) == 0) {
           logger.warn("Socket buffer is full. Pausing write.");
           return;
         }
       }
-      // `poll()` removes the message from the queue only after it has been
-      // completely written to the socket.
+      // I use `poll()` to remove the message from the queue only after it's
+      // been completely written to the socket.
       outgoingMessages.poll();
     }
 
-    // After the send queue is empty, we remove the OP_WRITE interest to
+    // After the send queue is empty, I remove the OP_WRITE interest to
     // stop receiving unnecessary notifications from the selector.
     if (key.isValid()) {
       logger.trace("Write queue empty. Unregistering OP_WRITE interest.");
@@ -278,8 +261,6 @@ public class ClientNetworkManager implements Runnable {
     onDisconnect.accept(reason);
   }
 
-  // Making the close method idempotent means it can be called multiple times
-  // without causing errors, which is useful for cleanup in complex error scenarios.
   public void close() {
     logger.debug("Closing network resources (selector and socket channel)...");
     outgoingMessages.clear();
@@ -288,7 +269,7 @@ public class ClientNetworkManager implements Runnable {
         selector.close();
       }
     } catch (IOException e) {
-      // Ignored, as we are already shutting down.
+      // Ignored, I'm already shutting down.
       logger.warn("Exception while closing selector, ignoring as we are shutting down.", e);
     }
     try {

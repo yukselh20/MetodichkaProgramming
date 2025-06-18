@@ -4,11 +4,8 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * A DTO that carries a complete, formatted description of a room, including its name, descriptive
- * text, and lists of objects, occupants, and exits. It is generated on the server and sent to the
- * client for display.
- */
+// This DTO carries a complete, formatted description of a room. I generate it
+// on the server and send it to the client for display.
 public class RoomDescriptionDTO implements Serializable {
   private static final long serialVersionUID = 4L;
 
@@ -57,9 +54,6 @@ public class RoomDescriptionDTO implements Serializable {
     return exits;
   }
 
-  // This method centralizes the logic for formatting the room description. By
-  // doing this on the server-side within the DTO, it ensures a consistent
-  // display format without duplicating logic on the client.
   public String getFormattedDescription() {
     StringBuilder sb = new StringBuilder();
     sb.append("=== ").append(roomName).append(" ===\n");

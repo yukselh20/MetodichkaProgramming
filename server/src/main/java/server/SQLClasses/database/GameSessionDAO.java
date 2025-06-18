@@ -9,30 +9,21 @@ import java.sql.SQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Data Access Object (DAO) for the 'game_sessions' table. This class encapsulates all database
- * operations for saving, loading, and deleting game state progress.
- */
+// This is the Data Access Object (DAO) for the 'game_sessions' table. It encapsulates
+// all database operations for saving, loading, and deleting game state.
 public class GameSessionDAO {
 
   private static final Logger logger = LoggerFactory.getLogger(GameSessionDAO.class);
 
-  // ObjectMapper is used to convert the GameStateData DTO to and from a JSON string.
+  // I use ObjectMapper to convert the GameStateData DTO to and from a JSON string.
   private final ObjectMapper objectMapper = new ObjectMapper();
 
-  /**
-   * Saves or updates a game state for a specific user and case. If a save already exists for this
-   * user and case, it will be overwritten. Otherwise, a new save record will be created.
-   *
-   * @param ownerId The ID of the user who owns this save.
-   * @param caseTitle The title of the case being saved.
-   * @param data The GameStateData object to be saved.
-   */
+  // This saves or updates a game state for a specific user and case. If a save already exists,
+  // it will be overwritten. Otherwise, a new record is created.
   public void saveOrUpdateGameState(int ownerId, String caseTitle, GameStateData data) {
-    // This SQL statement uses a PostgreSQL-specific "ON CONFLICT" clause.
-    // It attempts to INSERT a new row. If a row with the same (owner_id, case_title)
-    // already exists, it will UPDATE that existing row instead. This is perfect
-    // for our automatic, overwriting save logic.
+    // This SQL statement uses a PostgreSQL-specific "ON CONFLICT" clause. It attempts an
+    // INSERT, and if a row with the same unique key exists, it performs an UPDATE instead.
+    // This is perfect for my automatic, overwriting save logic.
     String sql =
         "INSERT INTO game_sessions (owner_id, case_title, game_state_data, last_saved_at) "
             + "VALUES (?, ?, ?::jsonb, NOW()) "
@@ -42,7 +33,7 @@ public class GameSessionDAO {
     try (Connection conn = DatabaseManager.getConnection();
         PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-      // Serialize the GameStateData object into a JSON string for storage.
+      // I'll serialize the GameStateData object into a JSON string for storage.
       String gameStateJson = objectMapper.writeValueAsString(data);
 
       pstmt.setInt(1, ownerId);
@@ -63,6 +54,6 @@ public class GameSessionDAO {
     }
   }
 
-  // Note: will implement the `load` and `delete` methods later.
+  // Note: I will implement the `load` and `delete` methods later.
   // For now, saveOrUpdateGameState is the priority for automatic saving.
 }

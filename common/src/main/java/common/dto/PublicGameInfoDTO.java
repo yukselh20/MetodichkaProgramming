@@ -3,10 +3,8 @@ package common.dto;
 import java.io.Serializable;
 import java.util.Objects;
 
-/**
- * A DTO that holds public-facing information about an open game lobby. This is used to display a
- * list of available games for players to join.
- */
+// This DTO holds public info about an open game lobby. I use it to display a list of available
+// games.
 public class PublicGameInfoDTO implements Serializable {
   private static final long serialVersionUID = 12L;
 
@@ -37,7 +35,7 @@ public class PublicGameInfoDTO implements Serializable {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     PublicGameInfoDTO that = (PublicGameInfoDTO) o;
-    // The game session ID is the definitive unique identifier for a game lobby.
+    // The game session ID is the unique identifier for a game lobby.
     return gameSessionId.equals(that.gameSessionId);
   }
 

@@ -8,13 +8,12 @@ import common.dto.TextMessage;
 import java.io.Serializable;
 import java.util.Objects;
 
-/** A command that moves a player from their current room to an adjacent one. */
+// This command moves a player from their current room to an adjacent one.
 public class MoveCommand extends BaseCommand implements Serializable {
   private static final long serialVersionUID = 109L;
   private final String direction;
 
   public MoveCommand(String direction) {
-    // Movement is a core in-game action.
     super(true);
     this.direction = Objects.requireNonNull(direction, "Direction cannot be null").toLowerCase();
   }
@@ -36,7 +35,6 @@ public class MoveCommand extends BaseCommand implements Serializable {
       return;
     }
 
-    // The command first checks if a valid exit exists in the given direction.
     Room nextRoom = currentRoom.getNeighbor(direction);
 
     if (nextRoom == null) {
@@ -45,13 +43,11 @@ public class MoveCommand extends BaseCommand implements Serializable {
       return;
     }
 
-    // After a successful move, the command updates the player's state and
-    // notifies the context, which may trigger other game logic like NPC movement.
+    // After a successful move, update the player's state and notify the context,
+    // which may trigger other game logic like NPC movement.
     Room oldRoom = currentRoom;
     detective.setCurrentRoom(nextRoom);
     context.handlePlayerMovement(playerId, oldRoom, nextRoom);
-
-    // Finally, it provides feedback to the player, including the description of the new room.
     context.sendResponseToPlayer(playerId, new TextMessage("You move " + direction + "."));
     RoomDescriptionDTO roomDTO = context.generateRoomDescriptionDTO(nextRoom, playerId);
     if (roomDTO != null) {

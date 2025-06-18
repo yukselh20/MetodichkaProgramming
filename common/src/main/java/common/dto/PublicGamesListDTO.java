@@ -6,10 +6,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * A DTO sent from the server to the client, containing a list of all currently open public game
- * lobbies that a player can join.
- */
+// I send this DTO from the server to the client. It contains a list of all
+// open public game lobbies that a player can join.
 public class PublicGamesListDTO implements Serializable {
   private static final long serialVersionUID = 13L;
 

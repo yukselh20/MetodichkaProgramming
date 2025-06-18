@@ -17,11 +17,8 @@ import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * A utility to load minimal case information from the client's local files. It only reads the title
- * and description, which is all the server needs to present a list of available cases to the player
- * for hosting or joining a game.
- */
+// this utility to load minimal case info from local files. It only reads the title
+// and description
 public class ClientCaseLoader {
 
   private static final Logger logger = LoggerFactory.getLogger(ClientCaseLoader.class);
@@ -29,12 +26,8 @@ public class ClientCaseLoader {
   private static final ObjectMapper mapper =
       new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-  // A private constructor prevents instantiation of this utility class.
   private ClientCaseLoader() {}
 
-  // This lightweight inner class is an optimization. It allows us to deserialize
-  // only the essential fields (title, description) from a potentially large and
-  // complex case JSON file, improving performance and reducing memory usage.
   @JsonIgnoreProperties(ignoreUnknown = true)
   private static class PartialCaseFileForInfo {
     private String title;
@@ -82,8 +75,7 @@ public class ClientCaseLoader {
               filePath -> {
                 File file = filePath.toFile();
                 try {
-                  // We deserialize into the lightweight `PartialCaseFileForInfo` class
-                  // instead of the full `CaseFile` DTO for efficiency.
+                  // Deserialize into the lightweight inner class for efficiency.
                   PartialCaseFileForInfo partialCase =
                       mapper.readValue(file, PartialCaseFileForInfo.class);
 
@@ -102,7 +94,6 @@ public class ClientCaseLoader {
               });
     } catch (IOException e) {
       logger.error("Could not list files in local case directory '{}'", dir.toAbsolutePath(), e);
-      // Returning an empty list is safer than null to prevent NullPointerExceptions.
       return Collections.emptyList();
     }
 

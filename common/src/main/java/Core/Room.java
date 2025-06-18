@@ -6,14 +6,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-/**
- * Represents a single location in the game world. A room has a name, a description, and contains
- * collections of interactable objects and exits.
- */
+// This class represents a single location in the game world. A room has a name,
+// a description, and contains collections of interactable objects and exits.
 public class Room {
   protected final String name;
   protected String description;
-  // Maps are used for efficient lookup of neighbors and objects by their names.
   protected final Map<String, Room> neighbors = new HashMap<>();
   protected final Map<String, GameObject> objects = new HashMap<>();
 
@@ -33,8 +30,6 @@ public class Room {
     return description;
   }
 
-  // All returned collections are wrapped in unmodifiable views to protect
-  // the room's internal state from external modification.
   public Map<String, Room> getNeighbors() {
     return Collections.unmodifiableMap(neighbors);
   }
@@ -92,7 +87,7 @@ public class Room {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     Room room = (Room) o;
-    // Two rooms are considered the same if they have the same name.
+    // I consider two rooms the same if they have the same name.
     return name.equals(room.name);
   }
 

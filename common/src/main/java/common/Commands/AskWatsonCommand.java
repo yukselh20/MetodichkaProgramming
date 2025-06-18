@@ -6,12 +6,12 @@ import common.ICommandContext;
 import common.dto.TextMessage;
 import java.io.Serializable;
 
-/** A command that allows the player to ask Dr. Watson for a hint. */
+// This command allows the player to ask Dr. Watson for a hint.
 public class AskWatsonCommand extends BaseCommand implements Serializable {
   private static final long serialVersionUID = 101L;
 
   public AskWatsonCommand() {
-    // This command is only valid after the investigation has started.
+    // This command should only be valid after the investigation has started.
     super(true);
   }
 

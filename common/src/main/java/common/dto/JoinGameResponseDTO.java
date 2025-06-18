@@ -3,10 +3,8 @@ package common.dto;
 import java.io.Serializable;
 import java.util.Objects;
 
-/**
- * A DTO sent from the server to a client in response to a request to join a game. It confirms
- * whether the join attempt was successful and provides the session ID.
- */
+// I send this DTO from the server in response to a join game request. It confirms
+// if the join attempt was successful and provides the session ID.
 public class JoinGameResponseDTO implements Serializable {
   private static final long serialVersionUID = 16L;
 
@@ -17,7 +15,7 @@ public class JoinGameResponseDTO implements Serializable {
   public JoinGameResponseDTO(boolean success, String message, String gameSessionId) {
     this.success = success;
     this.message = Objects.requireNonNull(message, "Message cannot be null");
-    // The game session ID is only sent if the join operation was successful.
+    // I'll only send the game session ID if the join operation was successful.
     this.gameSessionId = success ? gameSessionId : null;
   }
 

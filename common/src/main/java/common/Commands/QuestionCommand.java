@@ -9,7 +9,7 @@ import java.io.Serializable;
 import java.util.Objects;
 import java.util.Optional;
 
-/** A command for a player to interrogate a suspect who is in the same room. */
+// This command is for a player to interrogate a suspect who is in the same room.
 public class QuestionCommand extends BaseCommand implements Serializable {
   private static final long serialVersionUID = 110L;
   private final String suspectName;
@@ -36,18 +36,18 @@ public class QuestionCommand extends BaseCommand implements Serializable {
       return;
     }
 
-    // The context is responsible for finding the suspect in the game world.
+    // I use the context to find the suspect in the game world.
     Optional<Suspect> suspectOpt = context.findSuspect(suspectName);
 
     if (suspectOpt.isPresent()) {
       Suspect suspect = suspectOpt.get();
-      // The command succeeds only if the suspect is physically present in the player's room.
+      // The command succeeds only if the suspect is in the player's room.
       if (suspect.getCurrentRoom().equals(currentRoom)) {
         String statement = suspect.getStatement();
         String responseMsg = suspect.getName() + " says: \"" + statement + "\"";
         context.sendResponseToPlayer(playerId, new TextMessage(responseMsg));
 
-        // The suspect's statement is automatically recorded in the journal for later review.
+        // I automatically record the suspect's statement in the journal.
         String journalEntry = "Questioned " + suspect.getName() + ": " + statement;
         context.addEntryToJournal(journalEntry, playerId);
       } else {

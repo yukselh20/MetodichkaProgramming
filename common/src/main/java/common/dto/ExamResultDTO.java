@@ -6,10 +6,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * A DTO sent from the server to clients to communicate the results of the final exam, including the
- * score, rank, and details about incorrect answers.
- */
+// I send this DTO from the server to clients to communicate the final exam results.
 public class ExamResultDTO implements Serializable {
   private static final long serialVersionUID = 19L;
 
@@ -59,8 +56,6 @@ public class ExamResultDTO implements Serializable {
     return incorrectAnswerDetails;
   }
 
-  // Overriding toString provides a comprehensive, pre-formatted report of the
-  // exam results, simplifying the display logic on the client side.
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();

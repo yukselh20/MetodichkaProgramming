@@ -8,21 +8,15 @@ import java.util.Scanner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * The central coordinator (Mediator pattern) for the client-side application. It orchestrates all
- * major components: the network manager, input handler, state manager, and user interface. It is
- * responsible for routing user input and server responses to the correct handlers based on the
- * client's current state.
- */
+// This is the central coordinator for the client-side application. It orchestrates
+// the network manager, input handler, state manager, and UI. I use it to route user
+// input and server responses to the correct handlers based on the client's current state.
 public class GameClient {
   private static final Logger logger = LoggerFactory.getLogger(GameClient.class);
   private final ClientStateManager stateManager;
   private final ClientUserInterface ui;
   private final ClientNetworkManager networkManager;
   private ClientInputHandler inputHandler;
-
-  // A shared lock to synchronize all console I/O, preventing display
-  // corruption from concurrent threads writing to the console.
   private final Object consoleLock = new Object();
   private Thread networkThread;
   private Thread inputThread;
@@ -30,9 +24,8 @@ public class GameClient {
   public GameClient(String host, int port) {
     this.stateManager = new ClientStateManager();
     this.ui = new ClientUserInterface(stateManager, consoleLock);
-    // Callbacks (this::processServerResponse, this::handleDisconnect) are passed
-    // to the network manager, allowing it to communicate events back to this
-    // coordinator without a direct dependency.
+    // this passes callbacks (method references) to the network manager, allowing it to
+    // communicate events back to this coordinator without a direct dependency.
     this.networkManager =
         new ClientNetworkManager(
             host, port, stateManager, this::processServerResponse, this::handleDisconnect);
@@ -44,7 +37,7 @@ public class GameClient {
     networkThread = new Thread(networkManager, "ClientNetworkThread");
     inputThread = new Thread(this.inputHandler, "ClientInputThread");
 
-    // Threads are set as daemons so they don't prevent the application
+    // threads are set as daemons so they don't prevent the application
     // from exiting when the main thread finishes.
     networkThread.setDaemon(true);
     inputThread.setDaemon(true);
@@ -63,24 +56,18 @@ public class GameClient {
       logger.warn("Main thread interrupted while waiting for input thread to finish.");
       Thread.currentThread().interrupt();
     } finally {
-      // The shutdown sequence is crucial for cleaning up resources,
-      // regardless of how the application exits.
       shutdown();
     }
   }
 
-  /**
-   * The primary hub for processing all user input, routed from the Input Handler. It uses the
-   * client's current state to determine how to interpret the command.
-   */
+  // This is the primary hub for processing all user input. It uses the
+  // client's current state to determine how to interpret the command.
   public void processUserInput(String input) {
     synchronized (consoleLock) {
       if (!stateManager.isRunning() || input == null) return;
 
       logger.debug("Processing user input '{}' in state {}", input, stateManager.getCurrentState());
 
-      // Global commands like 'quit' and '/chat' are checked first because they
-      // can be used in almost any state.
       if (input.equalsIgnoreCase("quit")) {
         handleQuitTypedCommand();
         return;
@@ -91,35 +78,31 @@ public class GameClient {
         return;
       }
 
-      // After handling global commands, the input is processed based on the
-      // specific state of the client's state machine.
       ClientState state = stateManager.getCurrentState();
       switch (state) {
+          // States that accept standard in-game commands.
+        case IN_GAME:
+        case READY_TO_START_GAME_HOST:
+        case GUEST_READY_TO_START:
+          Serializable command = createInGameCommand(input);
+          if (command != null) {
+            networkManager.sendMessage(command);
+          } else {
+            ui.printPrompt();
+          }
+          break;
+
+          // State for Final Exam answer submission.
+        case AWAITING_EXAM_QUESTION_HOST:
+          handleExamAnswerSubmissionInput(input);
+          break;
+
+          // States for Menu Navigation.
         case INITIAL_MENU:
           handleInitialMenuInput(input);
           break;
         case AUTH_MENU:
           handleAuthMenuInput(input);
-          break;
-        case AWAITING_LOGIN_INPUT:
-        case AWAITING_REGISTER_INPUT:
-          if (input.equalsIgnoreCase("back") || input.equalsIgnoreCase("cancel")) {
-            changeState(ClientState.AUTH_MENU);
-            break;
-          }
-          Serializable lobbyCommand = parseLobbyCommand(input);
-          if (lobbyCommand != null) {
-            networkManager.sendMessage(lobbyCommand);
-            // Give user feedback that the command was sent
-            if (lobbyCommand instanceof LoginCommand) {
-              ui.displayMessage("Sending login request...");
-            } else if (lobbyCommand instanceof RegisterCommand) {
-              ui.displayMessage("Sending registration request...");
-            }
-          }
-          break;
-        case ADDING_CASE:
-          handleAddCasePathInput(input);
           break;
         case MULTIPLAYER_MENU:
           handleMultiplayerMenuInput(input);
@@ -133,39 +116,48 @@ public class GameClient {
         case CHOOSING_HOST_MODE:
           handleHostModeChoiceInput(input);
           break;
-        case CHOOSING_JOIN_MODE:
-          handleJoinModeChoiceInput(input);
-          break;
         case BROWSING_PUBLIC_GAMES:
           handleBrowsePublicInput(input);
           break;
         case ENTERING_PRIVATE_CODE:
           handlePrivateCodeInput(input);
           break;
-          // Several in-game states share the same command parsing logic.
-        case GUEST_READY_TO_START:
-        case READY_TO_START_GAME_HOST:
-        case IN_GAME:
-          Serializable command = createInGameCommand(input);
-          if (command != null) {
-            networkManager.sendMessage(command);
+        case ADDING_CASE:
+          handleAddCasePathInput(input);
+          break;
+
+          // States for typed-in credentials.
+        case AWAITING_LOGIN_INPUT:
+          if (input.equalsIgnoreCase("back")) {
+            changeState(ClientState.AUTH_MENU);
+            break;
+          }
+          String[] loginParts = input.trim().split("\\s+", 2);
+          if (loginParts.length == 2) {
+            networkManager.sendMessage(new LoginCommand(loginParts[0], loginParts[1]));
+            ui.displayMessage("Sending login request...");
           } else {
+            ui.displayMessage("Invalid format. Usage: <username> <password>");
             ui.printPrompt();
           }
           break;
-        case AWAITING_EXAM_QUESTION_HOST:
-          handleExamAnswerSubmissionInput(input);
-          break;
-        case DISCONNECTED:
-          if (input.equalsIgnoreCase("menu")) {
-            changeState(ClientState.INITIAL_MENU);
+        case AWAITING_REGISTER_INPUT:
+          if (input.equalsIgnoreCase("back")) {
+            changeState(ClientState.AUTH_MENU);
+            break;
+          }
+          String[] registerParts = input.trim().split("\\s+", 2);
+          if (registerParts.length == 2) {
+            networkManager.sendMessage(new RegisterCommand(registerParts[0], registerParts[1]));
+            ui.displayMessage("Sending registration request...");
           } else {
-            ui.printCurrentStateInfo();
+            ui.displayMessage("Invalid format. Usage: <username> <password>");
+            ui.printPrompt();
           }
           break;
+
+          // All other states are "waiting" states.
         default:
-          // This default case handles all "waiting" states where the user
-          // can't do much besides quit or chat.
           ui.displayMessage("Waiting... ('/chat' or 'quit' available)");
           ui.printPrompt();
           break;
@@ -173,39 +165,41 @@ public class GameClient {
     }
   }
 
-  /**
-   * The callback method for processing all objects received from the server. It determines the
-   * object's type and delegates to the appropriate handler.
-   */
+  // This is the callback method for processing all objects from the server.
+  // It determines the object's type and assigns the appropriate handler.
   private void processServerResponse(Object response) {
     synchronized (consoleLock) {
-      // A newline is printed to cleanly separate server output from user input.
       System.out.println();
       logger.debug("Processing server response of type: {}", response.getClass().getSimpleName());
 
       ClientState stateBeforeProcessing = stateManager.getCurrentState();
 
-      // The long if-else-if chain acts as a router, directing each DTO type
-      // to a specialized handler method.
       if (response instanceof TextMessage) {
         String content = ((TextMessage) response).getContent();
         ui.displayMessage("[Server] " + content);
 
-        if (content.equals("CMD_REQUEST_CASES")) {
-          logger.info("Server requested case list. Scanning local 'cases' directory...");
+        if (content.startsWith("Login successful")) {
+          logger.info("Login successful. Declaring local cases to server...");
           List<CaseInfoDTO> localCases = ClientCaseLoader.loadLocalCaseInfo("cases");
           networkManager.sendMessage(new ClientCaseListDTO(localCases));
+          changeState(ClientState.MULTIPLAYER_MENU);
           return;
         }
 
-        // On successful registration, we return the user to the auth menu to log in
-        if (content.startsWith("Registration successful")) {
+        ClientState currentState = stateManager.getCurrentState();
+
+        if ((currentState == ClientState.AWAITING_LOGIN_INPUT
+                || currentState == ClientState.AWAITING_REGISTER_INPUT)
+            && content.startsWith("Error:")) {
           changeState(ClientState.AUTH_MENU);
-          return; // Exit early
+          return;
         }
 
-        // Certain text messages from the server are used as cues to change the
-        // client's state, synchronizing the client and server state machines.
+        if (content.startsWith("Registration successful")) {
+          changeState(ClientState.AUTH_MENU);
+          return;
+        }
+
         String contentLower = content.toLowerCase();
         if (contentLower.contains("session has ended")
             || contentLower.contains("session aborted")) {
@@ -217,10 +211,6 @@ public class GameClient {
           changeState(ClientState.READY_TO_START_GAME_HOST);
         } else if (contentLower.contains("waiting for the host to start the game")) {
           changeState(ClientState.GUEST_READY_TO_START);
-        } else if (contentLower.startsWith("host, please submit your answer for q")) {
-          changeState(ClientState.AWAITING_EXAM_QUESTION_HOST);
-        } else if (contentLower.contains("is answering question")) {
-          changeState(ClientState.VIEWING_EXAM_GUEST);
         } else if (contentLower.contains("the investigation begins!")) {
           changeState(ClientState.IN_GAME);
         }
@@ -229,7 +219,9 @@ public class GameClient {
         ui.displayMessage(((ChatMessage) response).getFormattedMessage());
       } else if (response instanceof AvailableCasesDTO) {
         stateManager.setAvailableCasesCache(((AvailableCasesDTO) response).getUniqueCases());
-        changeState(ClientState.MULTIPLAYER_MENU);
+        if (stateManager.getCurrentState() == ClientState.WAITING_FOR_SERVER_INFO) {
+          changeState(ClientState.SELECTING_CASE);
+        }
       } else if (response instanceof HostGameResponseDTO) {
         handleHostGameResponse((HostGameResponseDTO) response);
       } else if (response instanceof PublicGamesListDTO) {
@@ -258,7 +250,7 @@ public class GameClient {
       }
 
       // This logic prevents re-printing the prompt if the state just changed,
-      // as the new state's menu handles its own prompt. It only re-prompts if
+      // as the new state's menu handles its own prompt. I only re-prompt if
       // the state was unchanged (e.g., after a chat message).
       if (stateManager.getCurrentState() == stateBeforeProcessing
           && stateManager.getCurrentState() != ClientState.INITIAL_MENU) {
@@ -303,53 +295,20 @@ public class GameClient {
     }
   }
 
-  private void handleCredentialInput(String input, String commandType) {
-    String[] parts = input.trim().split("\\s+", 3);
-    String commandWord = parts.length > 0 ? parts[0].toLowerCase() : "";
-
-    // Check if the user typed the correct command (login or register)
-    if (commandWord.equals(commandType) && parts.length == 3) {
-      String username = parts[1];
-      String password = parts[2];
-
-      if (commandType.equals("login")) {
-        networkManager.sendMessage(new LoginCommand(username, password));
-        ui.displayMessage("Sending login request...");
-      } else { // register
-        networkManager.sendMessage(new RegisterCommand(username, password));
-        ui.displayMessage("Sending registration request...");
-      }
-    } else if (input.equalsIgnoreCase("back") || input.equalsIgnoreCase("cancel")) {
-      // Allow user to go back to the auth menu
-      changeState(ClientState.AUTH_MENU);
-    } else {
-      ui.displayMessage("Invalid format. Usage: " + commandType + " <username> <password>");
-      ui.printPrompt();
-    }
-  }
-
-  // This method kicks off the connection process without blocking the input thread.
-  // The outcome of the connection attempt will be handled by a callback.
-  // In GameClient.java
   private void initiateMultiplayerConnection() {
-    // Show the user we are attempting to connect.
-    changeState(ClientState.CONNECTING);
+    ui.displayMessage("Attempting to connect to the server...");
 
-    if (!networkManager.connect()) {
-      // Connection failed immediately, inform the user and go back.
-      ui.displayMessage("\nConnection to the server failed. Please try again later.");
-      changeState(ClientState.INITIAL_MENU);
-    } else {
-      // Connection successful, now proceed to the authentication menu.
+    if (networkManager.connect()) {
       changeState(ClientState.AUTH_MENU);
+    } else {
+      changeState(ClientState.INITIAL_MENU);
     }
   }
 
   private void handleHostGameResponse(HostGameResponseDTO dto) {
     ui.displayMessage("[Server] " + dto.getMessage());
     if (dto.isSuccess()) {
-      // This is a temporary way to get the player ID. A more robust solution
-      // would be a dedicated field in the DTO.
+      stateManager.setIsHost(true);
       stateManager.setMyPlayerIdCache(dto.getMessage().split(" ")[0]);
       stateManager.setGameSessionIdCache(dto.getGameSessionId());
       changeState(ClientState.HOST_LOBBY_WAITING);
@@ -357,6 +316,7 @@ public class GameClient {
         ui.displayMessage("Your private game code is: " + dto.getPrivateCode());
       }
     } else {
+      stateManager.setIsHost(false);
       changeState(ClientState.SELECTING_CASE);
     }
   }
@@ -364,6 +324,7 @@ public class GameClient {
   private void handleJoinGameResponse(JoinGameResponseDTO dto) {
     ui.displayMessage("[Server] " + dto.getMessage());
     if (dto.isSuccess()) {
+      stateManager.setIsHost(false);
       stateManager.setGameSessionIdCache(dto.getGameSessionId());
       changeState(ClientState.GUEST_LOBBY_AWAITING_START);
     } else {
@@ -384,8 +345,6 @@ public class GameClient {
     }
   }
 
-  // The behavior of the 'quit' command is context-sensitive. In a game, it
-  // disconnects. In menus, it might just navigate back or exit the application.
   private void handleQuitTypedCommand() {
     ClientState state = stateManager.getCurrentState();
     logger.info("'Quit' command typed in state: {}", state);
@@ -404,6 +363,7 @@ public class GameClient {
       case READY_TO_START_GAME_HOST:
         ui.displayMessage("Disconnecting from server and returning to main menu...");
         networkManager.close();
+        stateManager.clearSessionData();
         changeState(ClientState.INITIAL_MENU);
         break;
 
@@ -490,31 +450,11 @@ public class GameClient {
         networkManager.sendMessage(new HostGameCommand(caseTitle, false));
         changeState(ClientState.SUBMITTING_HOST_REQUEST);
         break;
-      case "back":
+      case "3":
         changeState(ClientState.SELECTING_CASE);
         break;
       default:
         ui.displayMessage("Invalid choice.");
-        ui.printPrompt();
-        break;
-    }
-  }
-
-  private void handleJoinModeChoiceInput(String input) {
-    switch (input.toLowerCase()) {
-      case "1":
-        ui.displayMessage("Requesting list of public games...");
-        networkManager.sendMessage(new ListPublicGamesCommand());
-        changeState(ClientState.WAITING_FOR_SERVER_INFO);
-        break;
-      case "2":
-        changeState(ClientState.ENTERING_PRIVATE_CODE);
-        break;
-      case "back":
-        changeState(ClientState.JOIN_GAME_MENU);
-        break;
-      default:
-        ui.displayMessage("Invalid choice. Please enter 1, 2, or back.");
         ui.printPrompt();
         break;
     }
@@ -526,6 +466,11 @@ public class GameClient {
         String.format("Question %d of %d:", qInfo.getQuestionNumber(), qInfo.getTotalQuestions()));
     ui.displayMessage(qInfo.getQuestionText());
     stateManager.setCurrentExamQuestionNumberBeingAnswered(qInfo.getQuestionNumber());
+    if (stateManager.isHost()) {
+      changeState(ClientState.AWAITING_EXAM_QUESTION_HOST);
+    } else {
+      changeState(ClientState.VIEWING_EXAM_GUEST);
+    }
   }
 
   private void handleExamResult(ExamResultDTO result) {
@@ -544,7 +489,7 @@ public class GameClient {
 
   private void handleBrowsePublicInput(String input) {
     if (input.equalsIgnoreCase("back")) {
-      changeState(ClientState.CHOOSING_JOIN_MODE);
+      changeState(ClientState.JOIN_GAME_MENU);
       return;
     }
     if (input.equalsIgnoreCase("refresh")) {
@@ -573,7 +518,6 @@ public class GameClient {
       changeState(ClientState.JOIN_GAME_MENU);
       return;
     }
-    // A simple regex check ensures the private code format is correct before sending.
     if (input.matches("\\d{4}")) {
       networkManager.sendMessage(new JoinPrivateGameCommand(input));
       changeState(ClientState.SUBMITTING_JOIN_REQUEST);
@@ -586,12 +530,13 @@ public class GameClient {
   private void handleChatCommand(String input) {
     if (input.length() > "/chat ".length()) {
       ClientState state = stateManager.getCurrentState();
-      // Chat is only permitted in specific, interactive states.
       if (state == ClientState.HOST_LOBBY_WAITING
           || state == ClientState.GUEST_LOBBY_AWAITING_START
           || state == ClientState.READY_TO_START_GAME_HOST
+          || state == ClientState.GUEST_READY_TO_START
           || state == ClientState.IN_GAME
           || state == ClientState.FINAL_EXAM_ACTIVE
+          || state == ClientState.AWAITING_EXAM_QUESTION_HOST
           || state == ClientState.VIEWING_EXAM_GUEST) {
         String message = input.substring("/chat ".length());
         String playerId = stateManager.getMyPlayerIdCache();
@@ -604,8 +549,6 @@ public class GameClient {
     }
   }
 
-  // This method acts as a factory and parser for creating Command objects
-  // from raw user input during the main game loop.
   private Serializable createInGameCommand(String rawInput) {
     if (rawInput == null || rawInput.isBlank()) return null;
 
@@ -626,7 +569,7 @@ public class GameClient {
     String args = (parts.length > 1) ? parts[1] : "";
 
     if (args.isEmpty()) {
-      ui.displayMessage("Command '" + commandWord + "' requires an argument.");
+      ui.displayMessage("Unknown Command type help to see available commands");
       return null;
     }
 
@@ -639,7 +582,7 @@ public class GameClient {
         return new QuestionCommand(args);
       case "deduce":
         return new DeduceCommand(args);
-        // The "journal" command has sub-commands, adding another layer of parsing.
+        // The "journal" command has sub-commands, so I added another layer of parsing.
       case "journal":
         if (args.toLowerCase().startsWith("add ")) {
           String note = args.substring(4).trim();
@@ -668,9 +611,6 @@ public class GameClient {
     if (networkManager != null) {
       networkManager.close();
     }
-
-    // Interrupting the threads ensures they break out of any blocking
-    // operations (like reading input or network select) and terminate cleanly.
     if (inputThread != null) {
       logger.info("Interrupting input thread...");
       inputThread.interrupt();
@@ -681,11 +621,14 @@ public class GameClient {
     }
   }
 
-  // A centralized method for changing the client's state. It also triggers
-  // UI updates and handles state-based cache clearing.
+  // centralized method for changing the client's state.
   private void changeState(ClientState newState) {
     ClientState oldState = stateManager.getAndSetState(newState);
-    if (oldState != newState || newState == ClientState.INITIAL_MENU) {
+    boolean forceReprint =
+        (newState == ClientState.VIEWING_EXAM_GUEST
+            || newState == ClientState.AWAITING_EXAM_QUESTION_HOST);
+
+    if ((oldState != newState || newState == ClientState.INITIAL_MENU) || forceReprint) {
       logger.debug("Client state changed from {} to {}", oldState, newState);
       // This logic cleans up cached data when navigating away from certain menus
       // to prevent stale information from being used later.
@@ -700,7 +643,6 @@ public class GameClient {
     }
   }
 
-  // The callback method for handling disconnection events from the network manager.
   private void handleDisconnect(String reason) {
     synchronized (consoleLock) {
       if (stateManager.getCurrentState() != ClientState.DISCONNECTED
@@ -715,7 +657,9 @@ public class GameClient {
   private void handleMultiplayerMenuInput(String input) {
     switch (input.toLowerCase()) {
       case "1":
-        changeState(ClientState.SELECTING_CASE);
+        ui.displayMessage("Requesting list of available cases to host...");
+        networkManager.sendMessage(new RequestCaseListCommand());
+        changeState(ClientState.WAITING_FOR_SERVER_INFO);
         break;
       case "2":
         changeState(ClientState.JOIN_GAME_MENU);
@@ -723,6 +667,7 @@ public class GameClient {
       case "3":
         ui.displayMessage("Returning to main menu...");
         networkManager.close();
+        stateManager.clearSessionData();
         changeState(ClientState.INITIAL_MENU);
         break;
       default:
@@ -750,35 +695,5 @@ public class GameClient {
         ui.printPrompt();
         break;
     }
-  }
-
-  // Add this new method to GameClient.java
-  private Serializable parseLobbyCommand(String rawInput) {
-    if (rawInput == null || rawInput.isBlank()) {
-      return null;
-    }
-
-    String[] parts = rawInput.trim().split("\\s+", 3);
-    String commandWord = parts[0].toLowerCase();
-
-    // This handles commands that require two arguments (e.g., login <user> <pass>)
-    if (parts.length == 3) {
-      String arg1 = parts[1];
-      String arg2 = parts[2];
-      switch (commandWord) {
-        case "register":
-          return new RegisterCommand(arg1, arg2);
-        case "login":
-          return new LoginCommand(arg1, arg2);
-        default:
-          // It's not a known 2-argument command
-          break;
-      }
-    }
-
-    // Fallback for any other command or invalid format
-    ui.displayMessage("Unknown command or invalid format. Type 'help' for a list of commands.");
-    ui.printPrompt();
-    return null;
   }
 }
