@@ -193,6 +193,7 @@ public class ClientUserInterface {
         || state == ClientState.GUEST_LOBBY_AWAITING_START
         || state == ClientState.READY_TO_START_GAME_HOST
         || state == ClientState.IN_GAME
+        || state == ClientState.GUEST_READY_TO_START
         || state == ClientState.AWAITING_EXAM_QUESTION_HOST;
   }
 }

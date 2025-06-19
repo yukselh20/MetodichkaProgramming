@@ -27,7 +27,6 @@ public class PasswordHasher {
       BigInteger no = new BigInteger(1, messageDigest);
       String hashtext = no.toString(16);
 
-      // I'll add preceding 0s to make it 128 characters long.
       while (hashtext.length() < 128) {
         hashtext = "0" + hashtext;
       }

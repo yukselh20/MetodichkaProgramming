@@ -16,6 +16,19 @@ public class ServerMain {
     // I can configure the cases directory via an environment variable or a command-line argument.
     String casesDir = System.getenv().getOrDefault("CASES_DIR", "cases");
 
+
+    if (NetworkConstants.PORT_FROM_ENV != null) {
+      try {
+        port = Integer.parseInt(NetworkConstants.PORT_FROM_ENV);
+        logger.info("Using port from SERVER_PORT environment variable: {}", port);
+      } catch (NumberFormatException e) {
+        logger.error(
+                "Invalid value for SERVER_PORT: '{}'. Using default port {}.",
+                NetworkConstants.PORT_FROM_ENV,
+                port);
+      }
+    }
+
     if (args.length > 0) {
       try {
         port = Integer.parseInt(args[0]);
